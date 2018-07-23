@@ -11,8 +11,9 @@ import re
 
 def strip_rst(line):
     return re.sub(
-        r""":[^:]*?:`[^`]*?` |
+        r"""(C-)?:[^:]*?:`[^`]*?` |
             ``.*?`` |
+            \b[A-Z][a-zA-Z-]{2,}\b |  # Strip capitalized words and accronyms
             {[a-z]*?} |  # Sphinx tag
             -[A-Za-z]\b |
             `[^`]*?`_ |
@@ -39,12 +40,16 @@ def main():
         description='Check spelling in po files containing restructuredText.')
     parser.add_argument('-l', '--language', type=str, default='fr')
     parser.add_argument('--glob', type=str, default='**/*.po')
+    parser.add_argument('--debug', action='store_true')
     parser.add_argument('-p', '--personal-dict', type=str)
     args = parser.parse_args()
     personal_dict = ['-p', args.personal_dict] if args.personal_dict else []
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmpdir = Path(tmpdirname)
         for po_file in Path('.').glob(args.glob):
+            if args.debug:
+                print(po_to_text(str(po_file)))
+                continue
             (tmpdir / po_file.name).write_text(po_to_text(str(po_file)))
             output = subprocess.check_output(
                 ['hunspell', '-d', args.language] + personal_dict + ['-u3',
