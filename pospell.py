@@ -39,13 +39,15 @@ def main():
         description='Check spelling in po files containing restructuredText.')
     parser.add_argument('-l', '--language', type=str, default='fr')
     parser.add_argument('--glob', type=str, default='**/*.po')
+    parser.add_argument('-p', '--personal-dict', type=str)
     args = parser.parse_args()
+    personal_dict = ['-p', args.personal_dict] if args.personal_dict else []
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmpdir = Path(tmpdirname)
         for po_file in Path('.').glob(args.glob):
             (tmpdir / po_file.name).write_text(po_to_text(str(po_file)))
             output = subprocess.check_output(
-                ['hunspell', '-d', args.language, '-p', 'perso', '-u3',
+                ['hunspell', '-d', args.language] + personal_dict + ['-u3',
                  str(tmpdir / po_file.name)],
                 universal_newlines=True)
             for line in output.split('\n'):

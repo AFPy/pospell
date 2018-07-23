@@ -15,7 +15,11 @@ optional arguments:
   -h, --help            show this help message and exit
   -l LANGUAGE, --language LANGUAGE
   --glob GLOB
+  -p PERSONAL_DICT, --personal-dict PERSONAL_DICT
 ```
+
+A personal dict (the `-p` option) is simply a text file with one word
+per line.
 
 
 ## Example
