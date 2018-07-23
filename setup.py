@@ -2,10 +2,15 @@
 
 import setuptools
 
+with open('README.md') as readme:
+    long_description = readme.read()
+
 setuptools.setup(
     name='pospell',
-    version='0.0.2',
+    version='0.0.3',
     description="Spellcheck .po files containing reStructuredText translations",
+    long_description=long_description,
+    long_description_content_type='text/markdown', # This is important!
     author="Julien Palard",
     author_email='julien@palard.fr',
     url='https://github.com/JulienPalard/pospell',
