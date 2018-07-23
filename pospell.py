@@ -44,6 +44,7 @@ def main():
     parser.add_argument('-p', '--personal-dict', type=str)
     args = parser.parse_args()
     personal_dict = ['-p', args.personal_dict] if args.personal_dict else []
+    errors = 0
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmpdir = Path(tmpdirname)
         for po_file in Path('.').glob(args.glob):
@@ -58,10 +59,12 @@ def main():
             for line in output.split('\n'):
                 match = re.match(r'(?P<path>.*):(?P<line>[0-9]+): Locate: (?P<error>.*) \| Try: .*$', line)
                 if match:
+                    errors += 1
                     print(match.group('path').replace(str(tmpdir), '').lstrip('/'),
                           match.group('line'),
                           match.group('error'),
                           sep=':')
+    exit(0 if errors == 0 else -1)
 
 
 if __name__ == '__main__':
