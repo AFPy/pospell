@@ -22,9 +22,14 @@ def strip_rst(line):
 
 def po_to_text(po):
     buffer = []
+    lines = 0
     entries = polib.pofile(po)
     for entry in entries:
+        while lines < entry.linenum:
+            buffer.append('')
+            lines += 1
         buffer.append(strip_rst(entry.msgstr))
+        lines += 1
     return '\n'.join(buffer)
 
 
@@ -39,12 +44,17 @@ def main():
         tmpdir = Path(tmpdirname)
         for po_file in Path('.').glob(args.glob):
             (tmpdir / po_file.name).write_text(po_to_text(str(po_file)))
-            print('#', po_file.name)
             output = subprocess.check_output(
-                ['hunspell', '-d', args.language, '-p', 'perso', '-l',
+                ['hunspell', '-d', args.language, '-p', 'perso', '-u3',
                  str(tmpdir / po_file.name)],
                 universal_newlines=True)
-            print(output)
+            for line in output.split('\n'):
+                match = re.match(r'(?P<path>.*):(?P<line>[0-9]+): Locate: (?P<error>.*) \| Try: .*$', line)
+                if match:
+                    print(match.group('path').replace(str(tmpdir), '').lstrip('/'),
+                          match.group('line'),
+                          match.group('error'),
+                          sep=':')
 
 
 if __name__ == '__main__':

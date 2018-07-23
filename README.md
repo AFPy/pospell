@@ -26,11 +26,11 @@ number so we could use it as a linter in our editors.
 
 ```
 $ pospell --language fr --glob *.po
-# about.po
-reStructuredText
-Docutils
-Fredrik
-Lundh
-language
-librarie
+about.po:47:Jr.
+about.po:55:reStructuredText
+about.po:55:Docutils
+about.po:63:Fredrik
+about.po:63:Lundh
+about.po:75:language
+about.po:75:librarie
 ```
