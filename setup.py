@@ -4,12 +4,12 @@ import setuptools
 
 setuptools.setup(
     name='pospell',
-    version='0.0.1',
+    version='0.0.2',
     description="Spellcheck .po files containing reStructuredText translations",
     author="Julien Palard",
     author_email='julien@palard.fr',
     url='https://github.com/JulienPalard/pospell',
-    modules=[
+    py_modules=[
         'pospell',
     ],
     entry_points={
