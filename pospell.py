@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 
-import tempfile
+import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+
 import polib
-import re
 
 
 def strip_rst(line):
