@@ -10,16 +10,25 @@ import re
 
 
 def strip_rst(line):
+    """Strip out reStructuredText and Sphinx-doc tags from a line.
+    """
     return re.sub(
         r"""(C-)?:[^:]*?:`[^`]*?` |
             ``.*?``               |
             \b[A-Z][a-zA-Z-]{2,}[a-zA-Z.-]*\b |  # Strip capitalized words and accronyms
             {[a-z]*?}             | # reStructuredText tag
             \|[a-z]+?\|           | # reStructuredText substitution
+            %\([a-z_]+?\)s        | # Sphinx variable
             -[A-Za-z]\b           |
             `[^`]*?`_             |
             \*[^*]*?\*
         """, '', line, flags=re.VERBOSE)
+
+
+def clear(line):
+    """Clear various other syntaxes we may encounter in a line.
+    """
+    return re.sub(r"""<a href="[^"]*?">(.*)</a>""", r"\1", line)
 
 
 def po_to_text(po):
@@ -32,7 +41,7 @@ def po_to_text(po):
         while lines < entry.linenum:
             buffer.append('')
             lines += 1
-        buffer.append(strip_rst(entry.msgstr))
+        buffer.append(clear(strip_rst(entry.msgstr)))
         lines += 1
     return '\n'.join(buffer)
 
