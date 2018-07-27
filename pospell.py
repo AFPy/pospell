@@ -12,11 +12,12 @@ import re
 def strip_rst(line):
     return re.sub(
         r"""(C-)?:[^:]*?:`[^`]*?` |
-            ``.*?`` |
-            \b[A-Z][a-zA-Z-]{2,}\b |  # Strip capitalized words and accronyms
-            {[a-z]*?} |  # Sphinx tag
-            -[A-Za-z]\b |
-            `[^`]*?`_ |
+            ``.*?``               |
+            \b[A-Z][a-zA-Z-]{2,}[a-zA-Z.-]*\b |  # Strip capitalized words and accronyms
+            {[a-z]*?}             | # reStructuredText tag
+            \|[a-z]+?\|           | # reStructuredText substitution
+            -[A-Za-z]\b           |
+            `[^`]*?`_             |
             \*[^*]*?\*
         """, '', line, flags=re.VERBOSE)
 
