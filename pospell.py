@@ -74,14 +74,13 @@ def main():
     parser.add_argument(
         "--glob",
         type=str,
-        default="**/*.po",
         help="Provide a glob pattern, to be interpreted by pospell, to find po files, "
         "like --glob '**/*.po'.",
     )
     parser.add_argument(
         "po_file",
         nargs="*",
-        type=str,
+        type=Path,
         help="Files to check, can optionally be mixed with --glob, or not, "
         "use the one that fit your needs.",
     )
@@ -92,7 +91,9 @@ def main():
     errors = 0
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmpdir = Path(tmpdirname)
-        for po_file in chain(Path(".").glob(args.glob), args.po_file):
+        for po_file in chain(
+            Path(".").glob(args.glob) if args.glob else [], args.po_file
+        ):
             if args.debug:
                 print(po_to_text(str(po_file)))
                 continue
