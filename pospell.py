@@ -27,6 +27,8 @@ def po_to_text(po):
     lines = 0
     entries = polib.pofile(po)
     for entry in entries:
+        if entry.msgid == entry.msgstr:
+            continue
         while lines < entry.linenum:
             buffer.append('')
             lines += 1
