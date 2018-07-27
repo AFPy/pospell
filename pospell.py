@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-
+"""pospell is a spellcheckers for po files containing reStructuedText.
+"""
 
 import re
 import subprocess
