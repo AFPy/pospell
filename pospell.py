@@ -1,39 +1,92 @@
 """pospell is a spellcheckers for po files containing reStructuedText.
 """
-
+import io
 import re
 import subprocess
 import tempfile
+from contextlib import redirect_stderr, redirect_stdout
 from itertools import chain
 from pathlib import Path
+from types import SimpleNamespace
 
 import polib
 
+import docutils.frontend
+import docutils.nodes
+import docutils.parsers.rst
+from docutils.parsers.rst import roles
+from docutils.utils import new_document
+
+
+class DummyNodeClass(docutils.nodes.Inline, docutils.nodes.TextElement):
+    pass
+
+
+def monkey_patch_role(role):
+    def role_or_generic(role_name, language_module, lineno, reporter):
+        base_role, message = role(role_name, language_module, lineno, reporter)
+        if base_role is None:
+            roles.register_generic_role(role_name, DummyNodeClass)
+            base_role, message = role(role_name, language_module, lineno, reporter)
+        return base_role, message
+
+    return role_or_generic
+
+
+roles.role = monkey_patch_role(roles.role)
+
+
+class NodeToTextVisitor(docutils.nodes.NodeVisitor):
+    def __init__(self, document):
+        self.output = []
+        super().__init__(document)
+
+    def unknown_visit(self, node):
+        pass
+        # self.output.append(node.__class__.__name__ + ": " + node.rawsource)
+
+    def visit_Text(self, node):
+        self.output.append(node.rawsource)
+
+    def __str__(self):
+        return " ".join(self.output)
+
 
 def strip_rst(line):
-    """Strip out reStructuredText and Sphinx-doc tags from a line.
-    """
-    return re.sub(
-        r"""(C-)?:[^:]*?:`[^`]*?` |
-            ``.*?``               |
-            \b[A-Z][a-zA-Z-]{2,}[a-zA-Z.-]*\b |  # Strip capitalized words and accronyms
-            {[a-z]*?}             | # reStructuredText tag
-            \|[a-z]+?\|           | # reStructuredText substitution
-            %\([a-z_]+?\)s        | # Sphinx variable
-            -[A-Za-z]\b           |
-            `[^`]*?`_             |
-            \*[^*]*?\*
-        """,
-        "",
-        line,
-        flags=re.VERBOSE,
-    )
+    if line.endswith("::"):
+        # Drop :: at the end, it would cause Literal block expected
+        line = line[:-2]
+    parser = docutils.parsers.rst.Parser()
+    components = (docutils.parsers.rst.Parser,)
+    settings = docutils.frontend.OptionParser(
+        components=components
+    ).get_default_values()
+    stderr_stringio = io.StringIO()
+    with redirect_stderr(stderr_stringio):
+        document = docutils.utils.new_document("<rst-doc>", settings=settings)
+        parser.parse(line, document)
+    stderr = stderr_stringio.getvalue()
+    if stderr:
+        print(stderr.strip(), "while parsing:", line)
+    visitor = NodeToTextVisitor(document)
+    document.walk(visitor)
+    return str(visitor)
 
 
 def clear(line):
     """Clear various other syntaxes we may encounter in a line.
     """
-    return re.sub(r"""<a href="[^"]*?">(.*)</a>""", r"\1", line)
+    return re.sub(
+        r"""
+    <a\ href="[^"]*?">             |  # Strip HTML links
+    \b[A-Z][a-zA-Z-]{2,}[a-zA-Z.-]*\b |  # Strip capitalized words and accronyms
+    {[a-z]*?}                         |  # Sphinx variable
+    %\([a-z_]+?\)s                       # Sphinx variable
+    """,
+        r"",
+        line,
+        flags=re.VERBOSE,
+    )
 
 
 def po_to_text(po_path):

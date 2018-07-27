@@ -7,7 +7,7 @@ with open("README.md") as readme:
 
 setuptools.setup(
     name="pospell",
-    version="0.1.1",
+    version="0.2.0",
     description="Spellcheck .po files containing reStructuredText translations",
     long_description=long_description,
     long_description_content_type="text/markdown",  # This is important!
@@ -19,7 +19,7 @@ setuptools.setup(
     extras_require={
         "dev": ["bandit", "black", "detox", "flake8", "isort", "mypy", "pylint"]
     },
-    install_requires=["polib"],
+    install_requires=["polib", "docutils>=0.11"],
     license="MIT license",
     keywords="po spell gettext reStructuredText check sphinx translation",
     classifiers=[
