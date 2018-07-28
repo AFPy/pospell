@@ -17,7 +17,7 @@ import polib
 from docutils.parsers.rst import roles
 from docutils.utils import new_document
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 try:
     HUNSPELL_VERSION = subprocess.check_output(
         ["hunspell", "--version"], universal_newlines=True
