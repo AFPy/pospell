@@ -88,7 +88,7 @@ def clear(line):
     return re.sub(
         r"""
     <a\ href="[^"]*?">             |  # Strip HTML links
-    \b[A-Z][a-zA-Z-]{2,}[a-zA-Z.-]*\b |  # Strip capitalized words and accronyms
+    \b[A-Z][a-zA-Z-]+[a-zA-Z.-]*\b |  # Strip capitalized words and accronyms
     {[a-z]*?}                         |  # Sphinx variable
     %\([a-z_]+?\)s                       # Sphinx variable
     """,
