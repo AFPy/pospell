@@ -3,19 +3,28 @@
 import io
 import re
 import subprocess
+import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from itertools import chain
 from pathlib import Path
 from types import SimpleNamespace
 
-import polib
-
 import docutils.frontend
 import docutils.nodes
 import docutils.parsers.rst
+import polib
 from docutils.parsers.rst import roles
 from docutils.utils import new_document
+
+__version__ = "0.2.0"
+try:
+    HUNSPELL_VERSION = subprocess.check_output(
+        ["hunspell", "--version"], universal_newlines=True
+    ).split("\n")[0]
+except FileNotFoundError:
+    print("hunspell not found, please install hunspell.", file=sys.stderr)
+    exit(1)
 
 
 class DummyNodeClass(docutils.nodes.Inline, docutils.nodes.TextElement):
@@ -108,8 +117,8 @@ def po_to_text(po_path):
     return "\n".join(buffer)
 
 
-def main():
-    """Module entry point.
+def parse_args():
+    """Parse command line arguments.
     """
     import argparse
 
@@ -137,9 +146,20 @@ def main():
         help="Files to check, can optionally be mixed with --glob, or not, "
         "use the one that fit your needs.",
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s " + __version__ + " using hunspell: " + HUNSPELL_VERSION,
+    )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("-p", "--personal-dict", type=str)
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    """Module entry point.
+    """
+    args = parse_args()
     personal_dict = ["-p", args.personal_dict] if args.personal_dict else []
     errors = 0
     with tempfile.TemporaryDirectory() as tmpdirname:
