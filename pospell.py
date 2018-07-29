@@ -17,7 +17,7 @@ import polib
 from docutils.parsers.rst import roles
 from docutils.utils import new_document
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 try:
     HUNSPELL_VERSION = subprocess.check_output(
         ["hunspell", "--version"], universal_newlines=True
@@ -89,6 +89,9 @@ def clear(line):
         r"""
     <a\ href="[^"]*?">             |  # Strip HTML links
     \b[A-Z][a-zA-Z-]+[a-zA-Z.-]*\b |  # Strip capitalized words and accronyms
+    ---?                           |  # -- and --- separators to be ignored
+    -\\\                           |  # Ignore "MINUS BACKSLASH SPACE" typically used in
+                                      # formulas, like '-\ *π*' but *π* gets removed too
     {[a-z]*?}                         |  # Sphinx variable
     %\([a-z_]+?\)s                       # Sphinx variable
     """,
