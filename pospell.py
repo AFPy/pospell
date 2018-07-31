@@ -187,12 +187,7 @@ def main():
                 )
                 if match:
                     errors += 1
-                    print(
-                        match.group("path").replace(str(tmpdir), "").lstrip("/"),
-                        match.group("line"),
-                        match.group("error"),
-                        sep=":",
-                    )
+                    print(po_file, match.group("line"), match.group("error"), sep=":")
     exit(0 if errors == 0 else -1)
 
 
