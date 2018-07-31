@@ -1,7 +1,7 @@
 """pospell is a spellcheckers for po files containing reStructuedText.
 """
 import io
-import re
+import logging
 import subprocess
 import sys
 import tempfile
@@ -17,7 +17,9 @@ import polib
 from docutils.parsers.rst import roles
 from docutils.utils import new_document
 
-__version__ = "0.2.2"
+import regex
+
+__version__ = "0.2.3"
 try:
     HUNSPELL_VERSION = subprocess.check_output(
         ["hunspell", "--version"], universal_newlines=True
@@ -82,23 +84,27 @@ def strip_rst(line):
     return str(visitor)
 
 
-def clear(line):
+def clear(po_path, line):
     """Clear various other syntaxes we may encounter in a line.
     """
-    return re.sub(
-        r"""
-    <a\ href="[^"]*?">             |  # Strip HTML links
-    \b[A-Z][a-zA-Z-]+[a-zA-Z0-9.-]*\b |  # Strip capitalized words and accronyms
-    ---?                           |  # -- and --- separators to be ignored
-    -\\\                           |  # Ignore "MINUS BACKSLASH SPACE" typically used in
-                                      # formulas, like '-\ *π*' but *π* gets removed too
-    {[a-z]*?}                         |  # Sphinx variable
-    %\([a-z_]+?\)s                       # Sphinx variable
-    """,
-        r"",
-        line,
-        flags=re.VERBOSE,
-    )
+    to_drop = {
+        r'<a href="[^"]*?">',
+        # Strip capitalized words and accronyms:
+        # (Broad match in middle of sentenses)
+        r"(?<!\. |^)\b\p{Uppercase}\p{Letter}[\w.-]*\b",
+        # (Strict match at the beginning of sentenses)
+        r"(?<=\. |^)\b\p{Uppercase}{2,}\p{Letter}[\w-]*\b",
+        r"---?",  # -- and --- separators to be ignored
+        r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
+        # formulas, like '-\ *π*' but *π* gets removed too
+        r"{[a-z]*?}",  # Sphinx variable
+        r"%\([a-z_]+?\)s",  # Sphinx variable
+    }
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        for pattern in to_drop:
+            for dropped in regex.findall(pattern, line):
+                logging.debug("%s: dropping %r due to from %r", po_path, dropped, line)
+    return regex.sub("|".join(to_drop), r"", line)
 
 
 def po_to_text(po_path):
@@ -115,7 +121,7 @@ def po_to_text(po_path):
         while lines < entry.linenum:
             buffer.append("")
             lines += 1
-        buffer.append(clear(strip_rst(entry.msgstr)))
+        buffer.append(clear(po_path, strip_rst(entry.msgstr)))
         lines += 1
     return "\n".join(buffer)
 
@@ -150,6 +156,13 @@ def parse_args():
         "use the one that fit your needs.",
     )
     parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="More output, use -vv, -vvv, and so on.",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version="%(prog)s " + __version__ + " using hunspell: " + HUNSPELL_VERSION,
@@ -163,6 +176,7 @@ def main():
     """Module entry point.
     """
     args = parse_args()
+    logging.basicConfig(level=50 - 10 * args.verbose)
     personal_dict = ["-p", args.personal_dict] if args.personal_dict else []
     errors = 0
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -181,7 +195,7 @@ def main():
                 universal_newlines=True,
             )
             for line in output.split("\n"):
-                match = re.match(
+                match = regex.match(
                     r"(?P<path>.*):(?P<line>[0-9]+): Locate: (?P<error>.*) \| Try: .*$",
                     line,
                 )
