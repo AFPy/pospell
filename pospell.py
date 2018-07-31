@@ -88,7 +88,7 @@ def clear(line):
     return re.sub(
         r"""
     <a\ href="[^"]*?">             |  # Strip HTML links
-    \b[A-Z][a-zA-Z-]+[a-zA-Z.-]*\b |  # Strip capitalized words and accronyms
+    \b[A-Z][a-zA-Z-]+[a-zA-Z0-9.-]*\b |  # Strip capitalized words and accronyms
     ---?                           |  # -- and --- separators to be ignored
     -\\\                           |  # Ignore "MINUS BACKSLASH SPACE" typically used in
                                       # formulas, like '-\ *π*' but *π* gets removed too
