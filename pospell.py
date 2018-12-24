@@ -169,28 +169,35 @@ def parse_args():
     )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("-p", "--personal-dict", type=str)
-    return parser.parse_args()
+    parser.add_argument(
+        "--modified", "-m", action="store_true", help="Use git to find modified files."
+    )
+    args = parser.parse_args()
+    if not args.po_file and not args.modified:
+        parser.print_help()
+        exit(1)
+    return args
 
 
-def main():
-    """Module entry point.
+def spell_check(po_files, personal_dict, language, debug_only=False):
+    """Check for spelling mistakes in the files po_files (po format,
+    containing restructuredtext), for the given language.
+    personal_dict allow to pass a personal dict (-p) option, to hunspell.
+
+    Debug only will show what's passed to Hunspell instead of passing it.
     """
-    args = parse_args()
-    logging.basicConfig(level=50 - 10 * args.verbose)
-    personal_dict = ["-p", args.personal_dict] if args.personal_dict else []
     errors = 0
+    personal_dict_arg = ["-p", personal_dict] if personal_dict else []
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmpdir = Path(tmpdirname)
-        for po_file in chain(
-            Path(".").glob(args.glob) if args.glob else [], args.po_file
-        ):
-            if args.debug:
+        for po_file in po_files:
+            if debug_only:
                 print(po_to_text(str(po_file)))
                 continue
             (tmpdir / po_file.name).write_text(po_to_text(str(po_file)))
             output = subprocess.check_output(
-                ["hunspell", "-d", args.language]
-                + personal_dict
+                ["hunspell", "-d", language]
+                + personal_dict_arg
                 + ["-u3", str(tmpdir / po_file.name)],
                 universal_newlines=True,
             )
@@ -202,6 +209,30 @@ def main():
                 if match:
                     errors += 1
                     print(po_file, match.group("line"), match.group("error"), sep=":")
+    return errors
+
+
+def main():
+    """Module entry point.
+    """
+    args = parse_args()
+    logging.basicConfig(level=50 - 10 * args.verbose)
+    args.po_file = list(
+        chain(Path(".").glob(args.glob) if args.glob else [], args.po_file)
+    )
+    if args.modified:
+        git_status = subprocess.check_output(
+            ["git", "status", "--porcelain"], encoding="utf-8"
+        )
+        git_status_lines = [
+            line.split(maxsplit=2) for line in git_status.split("\n") if line
+        ]
+        args.po_file.extend(
+            Path(filename)
+            for status, filename in git_status_lines
+            if filename.endswith(".po")
+        )
+    errors = spell_check(args.po_file, args.personal_dict, args.language, args.debug)
     exit(0 if errors == 0 else -1)
 
 
