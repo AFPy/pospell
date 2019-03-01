@@ -99,6 +99,7 @@ def clear(po_path, line):
         # formulas, like '-\ *π*' but *π* gets removed too
         r"{[a-z]*?}",  # Sphinx variable
         r"%\([a-z_]+?\)s",  # Sphinx variable
+        r"« . »",  # Single letter examples (typically in Unicode documentation)
     }
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         for pattern in to_drop:
