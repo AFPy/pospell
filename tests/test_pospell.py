@@ -1,0 +1,22 @@
+from pospell import clear
+
+
+def test_clear():
+    # We don't remove legitimally capitalized first words:
+    assert clear("test", "Sport is great.") == "Sport is great."
+
+    # Sometimes we can't guess it's a firstname:
+    assert clear("test", "Julien Palard teste.") == "Julien  teste."
+
+    # But we do if clearly accronyms
+    assert clear("test", "HTTP is great.") == " is great."
+
+    # We remove capitalized words in the middle of a sentence
+    # they are typically names
+    assert clear("test", "Great is Unicode.") == "Great is ."
+
+    # We remove capitalized words even prefixed with l' in french.
+    assert clear("test", "Bah si, l'Unicode c'est bien.") == "Bah si,  c'est bien."
+
+    # We remove single letters in quotes
+    assert clear("test", "La lettre « é » est seule.") == "La lettre  est seule."

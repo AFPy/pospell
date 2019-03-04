@@ -89,11 +89,10 @@ def clear(po_path, line):
     """
     to_drop = {
         r'<a href="[^"]*?">',
-        # Strip capitalized words and accronyms:
-        # (Broad match in middle of sentenses)
-        r"(?<!\. |^)\b\p{Uppercase}\p{Letter}[\w.-]*\b",
-        # (Strict match at the beginning of sentenses)
-        r"(?<=\. |^)\b\p{Uppercase}{2,}\p{Letter}[\w-]*\b",
+        # Strip capitalized words and accronyms in sentences
+        r"(?<!\. |^)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
+        # Strip accronyms in the beginning of sentences
+        r"(?<=\. |^)\b(\p{Letter}['’])?\b\p{Uppercase}{2,}[\w-]*\b",
         r"---?",  # -- and --- separators to be ignored
         r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
         # formulas, like '-\ *π*' but *π* gets removed too
