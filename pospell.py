@@ -19,7 +19,7 @@ from docutils.utils import new_document
 
 import regex
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 try:
     HUNSPELL_VERSION = subprocess.check_output(
         ["hunspell", "--version"], universal_newlines=True
