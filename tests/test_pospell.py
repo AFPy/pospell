@@ -20,3 +20,6 @@ def test_clear():
 
     # We remove single letters in quotes
     assert clear("test", "La lettre « é » est seule.") == "La lettre  est seule."
+
+    # We drop hours because hunspell whines on them
+    assert clear("test", "Rendez-vous à 10h chez Murex") == "Rendez-vous à  chez "
