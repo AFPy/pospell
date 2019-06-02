@@ -11,6 +11,9 @@ def test_clear():
     # But we do if clearly accronyms
     assert clear("test", "HTTP is great.") == " is great."
 
+    # Also skip accronyms in the middle of a sentence
+    assert clear("test", "Because HTTP is great.") == "Because  is great."
+
     # We remove capitalized words in the middle of a sentence
     # they are typically names
     assert clear("test", "Great is Unicode.") == "Great is ."
@@ -23,3 +26,9 @@ def test_clear():
 
     # We drop hours because hunspell whines on them
     assert clear("test", "Rendez-vous à 10h chez Murex") == "Rendez-vous à  chez "
+
+    # When we removed a dashed name, remove it all
+    assert clear("test", "Marc-André Lemburg a fait") != "Marc-  a fait"
+
+    # Even in the middle of a sentence
+    assert clear("test", "Hier, Marc-André Lemburg a fait") == "Hier,   a fait"

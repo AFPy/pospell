@@ -90,7 +90,7 @@ def clear(po_path, line):
     to_drop = {
         r'<a href="[^"]*?">',
         # Strip capitalized words and accronyms in sentences
-        r"(?<!\. |^)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
+        r"(?<!\. |^|-)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
         # Strip accronyms in the beginning of sentences
         r"(?<=\. |^)\b(\p{Letter}['’])?\b\p{Uppercase}{2,}[\w-]*\b",
         r"---?",  # -- and --- separators to be ignored
