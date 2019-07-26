@@ -50,11 +50,47 @@ roles.role = monkey_patch_role(roles.role)
 class NodeToTextVisitor(docutils.nodes.NodeVisitor):
     def __init__(self, document):
         self.output = []
+        self.depth = 0
         super().__init__(document)
 
+    def dispatch_visit(self, node):
+        self.depth += 1
+        super().dispatch_visit(node)
+
+    def dispatch_departure(self, node):
+        self.depth -= 1
+        super().dispatch_departure(node)
+
     def unknown_visit(self, node):
-        pass
-        # self.output.append(node.__class__.__name__ + ": " + node.rawsource)
+        """Mandatory implementation to visit unknwon nodes.
+        """
+        # print(" " * self.depth * 4, node.__class__.__name__, ":", node)
+
+    def unknown_departure(self, node):
+        """To help debugging tree.
+        """
+        # print(node, repr(node), node.__class__.__name__)
+
+    def visit_emphasis(self, node):
+        raise docutils.nodes.SkipChildren
+
+    def visit_superscript(self, node):
+        raise docutils.nodes.SkipChildren
+
+    def visit_title_reference(self, node):
+        raise docutils.nodes.SkipChildren
+
+    def visit_strong(self, node):
+        raise docutils.nodes.SkipChildren
+
+    def visit_DummyNodeClass(self, node):
+        raise docutils.nodes.SkipChildren
+
+    def visit_reference(self, node):
+        raise docutils.nodes.SkipChildren
+
+    def visit_literal(self, node):
+        raise docutils.nodes.SkipChildren
 
     def visit_Text(self, node):
         self.output.append(node.rawsource)
