@@ -32,3 +32,9 @@ def test_clear():
 
     # Even in the middle of a sentence
     assert clear("test", "Hier, Marc-André Lemburg a fait") == "Hier,   a fait"
+
+    # Drop PEP 440 versions
+    assert (
+        clear("test", "under python 1.6a1, 1.5.2, and earlier.")
+        == "under python , , and earlier."
+    )

@@ -5,10 +5,9 @@ import logging
 import subprocess
 import sys
 import tempfile
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stderr
 from itertools import chain
 from pathlib import Path
-from types import SimpleNamespace
 
 import docutils.frontend
 import docutils.nodes
@@ -110,7 +109,7 @@ def strip_rst(line):
     ).get_default_values()
     stderr_stringio = io.StringIO()
     with redirect_stderr(stderr_stringio):
-        document = docutils.utils.new_document("<rst-doc>", settings=settings)
+        document = new_document("<rst-doc>", settings=settings)
         parser.parse(line, document)
     stderr = stderr_stringio.getvalue()
     if stderr:
@@ -133,6 +132,7 @@ def clear(po_path, line):
         r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
         # formulas, like '-\ *π*' but *π* gets removed too
         r"{[a-z]*?}",  # Sphinx variable
+        r"\b([1-9][0-9]*!)?(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*((a|b|rc)(0|[1-9][0-9]*))?(\.post(0|[1-9][0-9]*))?(\.dev(0|[1-9][0-9]*))?\b",  # PEP 440 Versions
         r"[0-9]+h",  # Hours
         r"%\([a-z_]+?\)s",  # Sphinx variable
         r"« . »",  # Single letter examples (typically in Unicode documentation)
