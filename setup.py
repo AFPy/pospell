@@ -7,7 +7,7 @@ with open("README.md") as readme:
 
 setuptools.setup(
     name="pospell",
-    version="0.3.8",
+    version="0.3.9",
     description="Spellcheck .po files containing reStructuredText translations",
     long_description=long_description,
     long_description_content_type="text/markdown",  # This is important!
