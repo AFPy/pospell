@@ -132,7 +132,7 @@ def clear(po_path, line):
         r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
         # formulas, like '-\ *π*' but *π* gets removed too
         r"{[a-z]*?}",  # Sphinx variable
-        r"\b([1-9][0-9]*!)?(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*((a|b|rc)(0|[1-9][0-9]*))?(\.post(0|[1-9][0-9]*))?(\.dev(0|[1-9][0-9]*))?\b",  # PEP 440 Versions
+        r"'?-?\b([0-9]+\.)*[0-9]+\.[0-9x]+\b'?",  # Versions
         r"[0-9]+h",  # Hours
         r"%\([a-z_]+?\)s",  # Sphinx variable
         r"« . »",  # Single letter examples (typically in Unicode documentation)
