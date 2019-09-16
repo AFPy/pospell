@@ -122,6 +122,8 @@ def strip_rst(line):
 def clear(po_path, line):
     """Clear various other syntaxes we may encounter in a line.
     """
+    # Normalize spaces
+    line = regex.sub(r"\s+", " ", line)
     to_drop = {
         r'<a href="[^"]*?">',
         # Strip capitalized words and accronyms in sentences
@@ -135,7 +137,7 @@ def clear(po_path, line):
         r"'?-?\b([0-9]+\.)*[0-9]+\.[0-9abcrx]+\b'?",  # Versions
         r"[0-9]+h",  # Hours
         r"%\([a-z_]+?\)s",  # Sphinx variable
-        r"« . »",  # Single letter examples (typically in Unicode documentation)
+        r"« . »",  # Single letter examples (typically in Unicode documentation)
     }
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         for pattern in to_drop:

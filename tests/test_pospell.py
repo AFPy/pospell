@@ -38,3 +38,8 @@ def test_clear():
         clear("test", "under python 1.6a1, 1.5.2, and earlier.")
         == "under python , , and earlier."
     )
+
+    # Double space should change nothing
+    assert clear("test", "Test. Aujourd'hui, j'ai faim.") == clear(
+        "test", "Test.  Aujourd'hui, j'ai faim."
+    )
