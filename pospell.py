@@ -126,8 +126,10 @@ def clear(po_path, line):
     line = regex.sub(r"\s+", " ", line)
     to_drop = {
         r'<a href="[^"]*?">',
-        # Strip accronyms
-        r"\b\p{Uppercase}{2,}\b",
+        # Strip capitalized words and accronyms in sentences
+        r"(?<!\. |^|-)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
+        # Strip accronyms in the beginning of sentences
+        r"(?<=\. |^)\b(\p{Letter}['’])?\b\p{Uppercase}{2,}[\w-]*\b",
         r"---?",  # -- and --- separators to be ignored
         r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
         # formulas, like '-\ *π*' but *π* gets removed too
