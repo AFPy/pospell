@@ -119,17 +119,15 @@ def strip_rst(line):
     return str(visitor)
 
 
-def clear(po_path, line):
+def clear(po_path, line, drop_capitalized=True):
     """Clear various other syntaxes we may encounter in a line.
     """
     # Normalize spaces
     line = regex.sub(r"\s+", " ", line)
     to_drop = {
         r'<a href="[^"]*?">',
-        # Strip capitalized words and accronyms in sentences
-        r"(?<!\. |^|-)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
-        # Strip accronyms in the beginning of sentences
-        r"(?<=\. |^)\b(\p{Letter}['’])?\b\p{Uppercase}{2,}[\w-]*\b",
+        # Strip accronyms
+        r"\b\p{Uppercase}{2,}\b",
         r"---?",  # -- and --- separators to be ignored
         r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
         # formulas, like '-\ *π*' but *π* gets removed too
@@ -139,6 +137,11 @@ def clear(po_path, line):
         r"%\([a-z_]+?\)s",  # Sphinx variable
         r"« . »",  # Single letter examples (typically in Unicode documentation)
     }
+    if drop_capitalized:
+        to_drop.update({
+            # Strip capitalized words in sentences
+            r"(?<!\. |^|-)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
+        })
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         for pattern in to_drop:
             for dropped in regex.findall(pattern, line):
