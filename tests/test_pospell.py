@@ -1,4 +1,4 @@
-from pospell import clear
+from pospell import clear, strip_rst
 
 
 def test_clear_keep_capital():
@@ -61,4 +61,9 @@ def test_clear_keep_capital():
     # Double space should change nothing
     assert clear("test", "Test. Aujourd'hui, j'ai faim.") == clear(
         "test", "Test.  Aujourd'hui, j'ai faim."
+    )
+
+    assert (
+        clear("test", strip_rst(":pep:`305` - Interface des fichiers"))
+        == "Interface des fichiers"
     )
