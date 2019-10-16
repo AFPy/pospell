@@ -16,6 +16,10 @@ def test_clear_keep_capital():
     assert clear("test", "HTTP is great.") == " is great."
     assert clear("test", "HTTP is great.", drop_capitalized=True) == " is great."
 
+    # Correctly drop prefix of accronyms
+    assert clear("test", "non-HTTP is bad.") == " is bad."
+    assert clear("test", "non-HTTP is bad.", drop_capitalized=True) == " is bad."
+
     # Also skip accronyms in the middle of a sentence
     assert clear("test", "Because HTTP is great.") == "Because  is great."
     assert (
