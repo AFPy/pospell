@@ -19,6 +19,9 @@ from docutils.utils import new_document
 import regex
 
 __version__ = "0.3.10"
+
+DEFAULT_DROP_CAPITALIZED = {"fr": True, "fr_FR": True}
+
 try:
     HUNSPELL_VERSION = subprocess.check_output(
         ["hunspell", "--version"], universal_newlines=True
@@ -119,7 +122,7 @@ def strip_rst(line):
     return str(visitor)
 
 
-def clear(po_path, line, drop_capitalized=True):
+def clear(po_path, line, drop_capitalized=False):
     """Clear various other syntaxes we may encounter in a line.
     """
     # Normalize spaces
@@ -138,10 +141,10 @@ def clear(po_path, line, drop_capitalized=True):
         r"« . »",  # Single letter examples (typically in Unicode documentation)
     }
     if drop_capitalized:
-        to_drop.update({
+        to_drop.add(
             # Strip capitalized words in sentences
-            r"(?<!\. |^|-)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
-        })
+            r"(?<!\. |^|-)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b"
+        )
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         for pattern in to_drop:
             for dropped in regex.findall(pattern, line):
@@ -149,7 +152,7 @@ def clear(po_path, line, drop_capitalized=True):
     return regex.sub("|".join(to_drop), r"", line)
 
 
-def po_to_text(po_path, drop_capitalized=True):
+def po_to_text(po_path, drop_capitalized=False):
     """Converts a po file to a text file, by stripping the msgids and all
     po syntax, but by keeping the kept lines at their same position /
     line number.
@@ -191,9 +194,14 @@ def parse_args():
         "like --glob '**/*.po'.",
     )
     parser.add_argument(
-        "--keep-capitalized",
+        "--drop-capitalized",
         action="store_true",
-        help="Do not drop capitalized words in sentences."
+        help="Always drop capitalized words in sentences (defaults according to the language).",
+    )
+    parser.add_argument(
+        "--no-drop-capitalized",
+        action="store_true",
+        help="Never drop capitalized words in sentences (defaults according to the language).",
     )
     parser.add_argument(
         "po_file",
@@ -220,13 +228,19 @@ def parse_args():
         "--modified", "-m", action="store_true", help="Use git to find modified files."
     )
     args = parser.parse_args()
+    if args.drop_capitalized and args.no_drop_capitalized:
+        print("Error: don't provide both --drop-capitalized AND --no-drop-capitalized.")
+        parser.print_help()
+        exit(1)
     if not args.po_file and not args.modified:
         parser.print_help()
         exit(1)
     return args
 
 
-def spell_check(po_files, personal_dict, language, drop_capitalized, debug_only=False):
+def spell_check(
+    po_files, personal_dict, language, drop_capitalized=False, debug_only=False
+):
     """Check for spelling mistakes in the files po_files (po format,
     containing restructuredtext), for the given language.
     personal_dict allow to pass a personal dict (-p) option, to hunspell.
@@ -241,7 +255,9 @@ def spell_check(po_files, personal_dict, language, drop_capitalized, debug_only=
             if debug_only:
                 print(po_to_text(str(po_file), drop_capitalized))
                 continue
-            (tmpdir / po_file.name).write_text(po_to_text(str(po_file), drop_capitalized))
+            (tmpdir / po_file.name).write_text(
+                po_to_text(str(po_file), drop_capitalized)
+            )
             output = subprocess.check_output(
                 ["hunspell", "-d", language]
                 + personal_dict_arg
@@ -264,6 +280,13 @@ def main():
     """
     args = parse_args()
     logging.basicConfig(level=50 - 10 * args.verbose)
+    default_drop_capitalized = DEFAULT_DROP_CAPITALIZED.get(args.language, False)
+    if args.drop_capitalized:
+        drop_capitalized = True
+    elif args.no_drop_capitalized:
+        drop_capitalized = False
+    else:
+        drop_capitalized = default_drop_capitalized
     args.po_file = list(
         chain(Path(".").glob(args.glob) if args.glob else [], args.po_file)
     )
@@ -280,11 +303,7 @@ def main():
             if filename.endswith(".po")
         )
     errors = spell_check(
-        args.po_file,
-        args.personal_dict,
-        args.language,
-        not args.keep_capitalized,
-        args.debug,
+        args.po_file, args.personal_dict, args.language, drop_capitalized, args.debug
     )
     exit(0 if errors == 0 else -1)
 
