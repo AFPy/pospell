@@ -130,7 +130,7 @@ def clear(po_path, line, drop_capitalized=False):
     to_drop = {
         r'<a href="[^"]*?">',
         # Strip accronyms
-        r"\b[\w-]*\p{Uppercase}{2,}[\w-]*\b",
+        r"\b[\w-]*\p{Uppercase}{2,}[0-9.\w-]*\b",
         r"---?",  # -- and --- separators to be ignored
         r" - ",  # Drop lone dashes (sometimes used in place of -- or ---)
         r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in

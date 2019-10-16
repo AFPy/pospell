@@ -1,7 +1,7 @@
 from pospell import clear, strip_rst
 
 
-def test_clear_keep_capital():
+def test_clear():
     # We don't remove legitimally capitalized first words:
     assert clear("test", "Sport is great.") == "Sport is great."
     assert clear("test", "Sport is great.", drop_capitalized=True) == "Sport is great."
@@ -12,27 +12,10 @@ def test_clear_keep_capital():
         clear("test", "Julien Palard teste.", drop_capitalized=True) == "Julien  teste."
     )
 
-    # But we do if clearly accronyms
-    assert clear("test", "HTTP is great.") == " is great."
-    assert clear("test", "HTTP is great.", drop_capitalized=True) == " is great."
-
-    # Correctly drop prefix of accronyms
-    assert clear("test", "non-HTTP is bad.") == " is bad."
-    assert clear("test", "non-HTTP is bad.", drop_capitalized=True) == " is bad."
-
-    # Also skip accronyms in the middle of a sentence
-    assert clear("test", "Because HTTP is great.") == "Because  is great."
-    assert (
-        clear("test", "Yes HTTP is great.", drop_capitalized=True) == "Yes  is great."
-    )
-
     # We remove capitalized words in the middle of a sentence
     # they are typically names
     assert clear("test", "Great is Unicode.") == "Great is Unicode."
     assert clear("test", "Great is Unicode.", drop_capitalized=True) == "Great is ."
-
-    assert clear("", "Ho. PEPs good.") == "Ho.  good."
-    assert clear("", "Ho. PEPs good.", drop_capitalized=True) == "Ho.  good."
 
     # We remove capitalized words even prefixed with l' in french.
     assert (
@@ -74,3 +57,36 @@ def test_clear_keep_capital():
         clear("test", strip_rst(":pep:`305` - Interface des fichiers"))
         == "Interface des fichiers"
     )
+
+
+def test_clear_accronyms():
+    for drop_capitalized in True, False:
+        # We always drop accronyms
+        assert (
+            clear("test", "HTTP is great.", drop_capitalized=drop_capitalized)
+            == " is great."
+        )
+
+        # Even suffixed with a number
+        assert (
+            clear("test", "POSIX.1 is great.", drop_capitalized=drop_capitalized)
+            == " is great."
+        )
+
+        # Correctly drop prefix of accronyms
+        assert (
+            clear("test", "non-HTTP is bad.", drop_capitalized=drop_capitalized)
+            == " is bad."
+        )
+
+        # Also skip accronyms in the middle of a sentence
+        assert (
+            clear("test", "Yes HTTP is great.", drop_capitalized=drop_capitalized)
+            == "Yes  is great."
+        )
+
+        assert clear("", "Ho. PEPs good.") == "Ho.  good."
+        assert (
+            clear("", "Ho. PEPs good.", drop_capitalized=drop_capitalized)
+            == "Ho.  good."
+        )
