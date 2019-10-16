@@ -27,6 +27,9 @@ def test_clear_keep_capital():
     assert clear("test", "Great is Unicode.") == "Great is Unicode."
     assert clear("test", "Great is Unicode.", drop_capitalized=True) == "Great is ."
 
+    assert clear("", "Ho. PEPs good.") == "Ho.  good."
+    assert clear("", "Ho. PEPs good.", drop_capitalized=True) == "Ho.  good."
+
     # We remove capitalized words even prefixed with l' in french.
     assert (
         clear("test", "Bah si, l'Unicode c'est bien.")
