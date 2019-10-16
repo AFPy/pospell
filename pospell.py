@@ -119,17 +119,15 @@ def strip_rst(line):
     return str(visitor)
 
 
-def clear(po_path, line):
+def clear(po_path, line, drop_capitalized=True):
     """Clear various other syntaxes we may encounter in a line.
     """
     # Normalize spaces
     line = regex.sub(r"\s+", " ", line)
     to_drop = {
         r'<a href="[^"]*?">',
-        # Strip capitalized words and accronyms in sentences
-        r"(?<!\. |^|-)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
-        # Strip accronyms in the beginning of sentences
-        r"(?<=\. |^)\b(\p{Letter}['’])?\b\p{Uppercase}{2,}[\w-]*\b",
+        # Strip accronyms
+        r"\b\p{Uppercase}{2,}\b",
         r"---?",  # -- and --- separators to be ignored
         r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
         # formulas, like '-\ *π*' but *π* gets removed too
@@ -139,6 +137,11 @@ def clear(po_path, line):
         r"%\([a-z_]+?\)s",  # Sphinx variable
         r"« . »",  # Single letter examples (typically in Unicode documentation)
     }
+    if drop_capitalized:
+        to_drop.update({
+            # Strip capitalized words in sentences
+            r"(?<!\. |^|-)\b(\p{Letter}['’])?\b\p{Uppercase}\p{Letter}[\w.-]*\b",
+        })
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         for pattern in to_drop:
             for dropped in regex.findall(pattern, line):
@@ -146,7 +149,7 @@ def clear(po_path, line):
     return regex.sub("|".join(to_drop), r"", line)
 
 
-def po_to_text(po_path):
+def po_to_text(po_path, drop_capitalized=True):
     """Converts a po file to a text file, by stripping the msgids and all
     po syntax, but by keeping the kept lines at their same position /
     line number.
@@ -160,7 +163,7 @@ def po_to_text(po_path):
         while lines < entry.linenum:
             buffer.append("")
             lines += 1
-        buffer.append(clear(po_path, strip_rst(entry.msgstr)))
+        buffer.append(clear(po_path, strip_rst(entry.msgstr), drop_capitalized))
         lines += 1
     return "\n".join(buffer)
 
@@ -186,6 +189,11 @@ def parse_args():
         type=str,
         help="Provide a glob pattern, to be interpreted by pospell, to find po files, "
         "like --glob '**/*.po'.",
+    )
+    parser.add_argument(
+        "--keep-capitalized",
+        action="store_true",
+        help="Do not drop capitalized words in sentences."
     )
     parser.add_argument(
         "po_file",
@@ -218,7 +226,7 @@ def parse_args():
     return args
 
 
-def spell_check(po_files, personal_dict, language, debug_only=False):
+def spell_check(po_files, personal_dict, language, drop_capitalized, debug_only=False):
     """Check for spelling mistakes in the files po_files (po format,
     containing restructuredtext), for the given language.
     personal_dict allow to pass a personal dict (-p) option, to hunspell.
@@ -231,9 +239,9 @@ def spell_check(po_files, personal_dict, language, debug_only=False):
         tmpdir = Path(tmpdirname)
         for po_file in po_files:
             if debug_only:
-                print(po_to_text(str(po_file)))
+                print(po_to_text(str(po_file), drop_capitalized))
                 continue
-            (tmpdir / po_file.name).write_text(po_to_text(str(po_file)))
+            (tmpdir / po_file.name).write_text(po_to_text(str(po_file), drop_capitalized))
             output = subprocess.check_output(
                 ["hunspell", "-d", language]
                 + personal_dict_arg
@@ -271,7 +279,13 @@ def main():
             for status, filename in git_status_lines
             if filename.endswith(".po")
         )
-    errors = spell_check(args.po_file, args.personal_dict, args.language, args.debug)
+    errors = spell_check(
+        args.po_file,
+        args.personal_dict,
+        args.language,
+        not args.keep_capitalized,
+        args.debug,
+    )
     exit(0 if errors == 0 else -1)
 
 

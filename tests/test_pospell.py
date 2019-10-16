@@ -17,6 +17,10 @@ def test_clear():
     # We remove capitalized words in the middle of a sentence
     # they are typically names
     assert clear("test", "Great is Unicode.") == "Great is ."
+    assert (
+        clear("test", "Great is Unicode.", drop_capitalized=False)
+        == "Great is Unicode."
+    )
 
     # We remove capitalized words even prefixed with l' in french.
     assert clear("test", "Bah si, l'Unicode c'est bien.") == "Bah si,  c'est bien."
