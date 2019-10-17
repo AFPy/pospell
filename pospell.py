@@ -18,7 +18,7 @@ from docutils.utils import new_document
 
 import regex
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 DEFAULT_DROP_CAPITALIZED = {"fr": True, "fr_FR": True}
 
