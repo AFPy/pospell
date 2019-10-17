@@ -140,6 +140,7 @@ def clear(po_path, line, drop_capitalized=False):
         r"[0-9]+h",  # Hours
         r"%\([a-z_]+?\)s",  # Sphinx variable
         r"« . »",  # Single letter examples (typically in Unicode documentation)
+        "\xad",  # soft hyphen
     }
     if drop_capitalized:
         to_drop.add(
