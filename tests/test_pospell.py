@@ -31,7 +31,7 @@ def test_clear():
     assert clear("test", "La lettre « é » est seule.") == "La lettre  est seule."
 
     # We remove soft hyphens
-    assert clear("some\xadthing") == "something"
+    assert clear("test", "some\xadthing") == "something"
 
     # We drop hours because hunspell whines on them
     assert clear("test", "Rendez-vous à 10h chez Murex") == "Rendez-vous à  chez Murex"
