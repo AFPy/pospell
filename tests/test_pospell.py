@@ -88,7 +88,10 @@ def test_clear_accronyms():
             == "Yes  is great."
         )
 
+        # Don't drop "mixed accronyms", as for example in french we
+        # don't pluralize them (so "the PEPs" translates to "les PEP"
+        # in french).
         assert (
             clear("", "Ho. PEPs good.", drop_capitalized=drop_capitalized)
-            == "Ho.  good."
+            == "Ho. PEPs good."
         )
