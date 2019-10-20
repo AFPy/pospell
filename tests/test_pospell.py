@@ -88,7 +88,6 @@ def test_clear_accronyms():
             == "Yes  is great."
         )
 
-        assert clear("", "Ho. PEPs good.") == "Ho.  good."
         assert (
             clear("", "Ho. PEPs good.", drop_capitalized=drop_capitalized)
             == "Ho.  good."
