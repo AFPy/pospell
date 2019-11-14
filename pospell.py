@@ -260,12 +260,15 @@ def spell_check(
             (tmpdir / po_file.name).write_text(
                 po_to_text(str(po_file), drop_capitalized)
             )
-            output = subprocess.check_output(
-                ["hunspell", "-d", language]
-                + personal_dict_arg
-                + ["-u3", str(tmpdir / po_file.name)],
-                universal_newlines=True,
-            )
+            try:
+                output = subprocess.check_output(
+                    ["hunspell", "-d", language]
+                    + personal_dict_arg
+                    + ["-u3", str(tmpdir / po_file.name)],
+                    universal_newlines=True,
+                )
+            except subprocess.CalledProcessError:
+                return -1
             for line in output.split("\n"):
                 match = regex.match(
                     r"(?P<path>.*):(?P<line>[0-9]+): Locate: (?P<error>.*) \| Try: .*$",
