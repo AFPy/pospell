@@ -138,7 +138,7 @@ def clear(po_path, line, drop_capitalized=False):
         r"{[a-z_]*?}",  # Sphinx variable
         r"'?-?\b([0-9]+\.)*[0-9]+\.[0-9abcrx]+\b'?",  # Versions
         r"[0-9]+h",  # Hours
-        r"%\([a-z_]+?\)s",  # Sphinx variable
+        r"%\([a-z_]+?\)[diouxXeEfFgGcrsa%]",  # Sphinx variable
         r"« . »",  # Single letter examples (typically in Unicode documentation)
         "\xad",  # soft hyphen
     }
