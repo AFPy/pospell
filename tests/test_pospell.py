@@ -45,6 +45,9 @@ def test_clear():
         == "Hier, Marc-André Lemburg a fait"
     )
 
+    # We remove variables
+    assert clear("test", "Starting {days_since} days ago") == "Starting  days ago"
+
     # Drop PEP 440 versions
     assert (
         clear("test", "under python 1.6a1, 1.5.2, and earlier.")

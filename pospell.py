@@ -135,7 +135,7 @@ def clear(po_path, line, drop_capitalized=False):
         r" - ",  # Drop lone dashes (sometimes used in place of -- or ---)
         r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
         # formulas, like '-\ *π*' but *π* gets removed too
-        r"{[a-z]*?}",  # Sphinx variable
+        r"{[a-z_]*?}",  # Sphinx variable
         r"'?-?\b([0-9]+\.)*[0-9]+\.[0-9abcrx]+\b'?",  # Versions
         r"[0-9]+h",  # Hours
         r"%\([a-z_]+?\)s",  # Sphinx variable
