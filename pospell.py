@@ -8,6 +8,7 @@ import tempfile
 from contextlib import redirect_stderr
 from itertools import chain
 from pathlib import Path
+from shutil import which
 
 import docutils.frontend
 import docutils.nodes
@@ -280,6 +281,28 @@ def spell_check(
     return errors
 
 
+def gracefull_handling_of_missing_dicts(language):
+    """Check if hunspell dictionary for given language is installed.
+    """
+    hunspell_dash_d = subprocess.check_output(
+        ["hunspell", "-D"], universal_newlines=True, stderr=subprocess.STDOUT
+    )
+    languages = {Path(line).name for line in hunspell_dash_d}
+    if language not in languages:
+        print(
+            "hunspell dictionary for {!r} not found, please install it.".format(
+                language
+            ),
+            file=sys.stderr,
+        )
+        if which("apt"):
+            print()
+            print("Maybe try something like:")
+            print()
+            print("  sudo apt install hunspell-{}".format(language))
+        exit(1)
+
+
 def main():
     """Module entry point.
     """
@@ -310,6 +333,8 @@ def main():
     errors = spell_check(
         args.po_file, args.personal_dict, args.language, drop_capitalized, args.debug
     )
+    if errors == -1:
+        gracefull_handling_of_missing_dicts(args.language)
     exit(0 if errors == 0 else -1)
 
 
