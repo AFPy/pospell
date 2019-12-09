@@ -288,19 +288,32 @@ def gracefull_handling_of_missing_dicts(language):
         ["hunspell", "-D"], universal_newlines=True, stderr=subprocess.STDOUT
     )
     languages = {Path(line).name for line in hunspell_dash_d}
-    if language not in languages:
-        print(
-            "hunspell dictionary for {!r} not found, please install it.".format(
-                language
-            ),
-            file=sys.stderr,
+
+    def error(*args, file=sys.stderr, **kwargs):
+        print(*args, file=file, **kwargs)
+
+    if language in languages:
+        return
+    error(
+        "The hunspell dictionary for your language is missing, please install it.",
+        end="\n\n",
+    )
+    if which("apt"):
+        error("Maybe try something like:")
+        error("  sudo apt install hunspell-{}".format(language))
+    else:
+        error(
+            """I don't know your environment, but I bet the package name looks like:
+
+    hunspell-{language}
+
+If you find it, please tell me (by opening an issue or a PR on
+https://github.com/JulienPalard/pospell/) so I can enhance this error message.
+""".format(
+                language=language
+            )
         )
-        if which("apt"):
-            print()
-            print("Maybe try something like:")
-            print()
-            print("  sudo apt install hunspell-{}".format(language))
-        exit(1)
+    exit(1)
 
 
 def main():
