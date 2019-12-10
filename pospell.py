@@ -8,6 +8,7 @@ import tempfile
 from contextlib import redirect_stderr
 from itertools import chain
 from pathlib import Path
+from shutil import which
 
 import docutils.frontend
 import docutils.nodes
@@ -280,6 +281,41 @@ def spell_check(
     return errors
 
 
+def gracefull_handling_of_missing_dicts(language):
+    """Check if hunspell dictionary for given language is installed.
+    """
+    hunspell_dash_d = subprocess.check_output(
+        ["hunspell", "-D"], universal_newlines=True, stderr=subprocess.STDOUT
+    )
+    languages = {Path(line).name for line in hunspell_dash_d}
+
+    def error(*args, file=sys.stderr, **kwargs):
+        print(*args, file=file, **kwargs)
+
+    if language in languages:
+        return
+    error(
+        "The hunspell dictionary for your language is missing, please install it.",
+        end="\n\n",
+    )
+    if which("apt"):
+        error("Maybe try something like:")
+        error("  sudo apt install hunspell-{}".format(language))
+    else:
+        error(
+            """I don't know your environment, but I bet the package name looks like:
+
+    hunspell-{language}
+
+If you find it, please tell me (by opening an issue or a PR on
+https://github.com/JulienPalard/pospell/) so I can enhance this error message.
+""".format(
+                language=language
+            )
+        )
+    exit(1)
+
+
 def main():
     """Module entry point.
     """
@@ -310,6 +346,8 @@ def main():
     errors = spell_check(
         args.po_file, args.personal_dict, args.language, drop_capitalized, args.debug
     )
+    if errors == -1:
+        gracefull_handling_of_missing_dicts(args.language)
     exit(0 if errors == 0 else -1)
 
 
