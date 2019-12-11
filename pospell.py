@@ -5,6 +5,7 @@ import logging
 import subprocess
 import sys
 import tempfile
+from unicodedata import category
 from contextlib import redirect_stderr
 from itertools import chain
 from pathlib import Path
@@ -16,20 +17,13 @@ import docutils.parsers.rst
 import polib
 from docutils.parsers.rst import roles
 from docutils.utils import new_document
-
+from hunspell import Hunspell
+from nltk.tokenize import TweetTokenizer
 import regex
 
 __version__ = "1.0.3"
 
 DEFAULT_DROP_CAPITALIZED = {"fr": True, "fr_FR": True}
-
-try:
-    HUNSPELL_VERSION = subprocess.check_output(
-        ["hunspell", "--version"], universal_newlines=True
-    ).split("\n")[0]
-except FileNotFoundError:
-    print("hunspell not found, please install hunspell.", file=sys.stderr)
-    exit(1)
 
 
 class DummyNodeClass(docutils.nodes.Inline, docutils.nodes.TextElement):
@@ -130,6 +124,8 @@ def clear(po_path, line, drop_capitalized=False):
     line = regex.sub(r"\s+", " ", line)
     to_drop = {
         r'<a href="[^"]*?">',
+        r"</a>",
+        r"\w*@\w*",  # Emails and various handles (docs@, @sizeof, ...)
         # Strip accronyms
         r"\b[\w-]*\p{Uppercase}{2,}[0-9.\w-]*\b",
         r"---?",  # -- and --- separators to be ignored
@@ -241,6 +237,15 @@ def parse_args():
     return args
 
 
+def should_ignore(word):
+    if all(category(c)[0] in "PZ" for c in word):
+        # print(f"Skipping {word}")
+        return True
+    if any(category(c)[0] == "N" for c in word):
+        return True
+    return False
+
+
 def spell_check(
     po_files, personal_dict, language, drop_capitalized=False, debug_only=False
 ):
@@ -252,32 +257,31 @@ def spell_check(
     """
     errors = 0
     personal_dict_arg = ["-p", personal_dict] if personal_dict else []
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tmpdir = Path(tmpdirname)
-        for po_file in po_files:
-            if debug_only:
-                print(po_to_text(str(po_file), drop_capitalized))
-                continue
-            (tmpdir / po_file.name).write_text(
-                po_to_text(str(po_file), drop_capitalized)
-            )
-            try:
-                output = subprocess.check_output(
-                    ["hunspell", "-d", language]
-                    + personal_dict_arg
-                    + ["-u3", str(tmpdir / po_file.name)],
-                    universal_newlines=True,
-                )
-            except subprocess.CalledProcessError:
-                return -1
-            for line in output.split("\n"):
-                match = regex.match(
-                    r"(?P<path>.*):(?P<line>[0-9]+): Locate: (?P<error>.*) \| Try: .*$",
-                    line,
-                )
-                if match:
+    hunspell = Hunspell(language, hunspell_data_dir="/usr/share/hunspell")
+    with open(personal_dict) as personal_dict_file:
+        whitelist = {line.strip() for line in personal_dict_file.readlines()}
+    tknzr = TweetTokenizer()
+    for po_file in po_files:
+        text_to_check = po_to_text(str(po_file), drop_capitalized)
+        if debug_only:
+            print(text_to_check)
+            continue
+        for line_no, line in enumerate(text_to_check.split("\n")):
+            line = line.replace("’", "'")
+            for word in tknzr.tokenize(line):
+                if len(word) == 1:
+                    continue
+                if word.lower() in whitelist:
+                    continue
+                if not hunspell.spell(word) and not should_ignore(word):
                     errors += 1
-                    print(po_file, match.group("line"), match.group("error"), sep=":")
+                    suggestion = hunspell.suggest(word)
+                    if not word:
+                        print(f"{po_file}:{line_no}: {word!r}")
+                    else:
+                        print(
+                            f"{po_file}:{line_no}: {word!r}, suggestions: {', '.join(suggestion)}"
+                        )
     return errors
 
 
