@@ -217,9 +217,7 @@ def parse_args():
         help="More output, use -vv, -vvv, and so on.",
     )
     parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s " + __version__ + " using hunspell: " + HUNSPELL_VERSION,
+        "--version", action="version", version="%(prog)s " + __version__,
     )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("-p", "--personal-dict", type=str)
