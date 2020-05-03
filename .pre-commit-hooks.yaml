@@ -1,0 +1,5 @@
+-   id: pospell
+    name: pospell
+    entry: pospell
+    language: python
+    files: \.po$
