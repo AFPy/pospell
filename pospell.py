@@ -151,8 +151,14 @@ def clear(po_path, line, drop_capitalized=False):
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         for pattern in to_drop:
             for dropped in regex.findall(pattern, line):
-                logging.debug("%s: dropping %r due to from %r", po_path, dropped, line)
-    return regex.sub("|".join(to_drop), r"", line)
+                logging.debug(
+                    "%s: dropping %r via %r due to from %r",
+                    po_path,
+                    dropped,
+                    pattern,
+                    line,
+                )
+    return regex.sub("|".join(to_drop), r" ", line)
 
 
 def po_to_text(po_path, drop_capitalized=False):
