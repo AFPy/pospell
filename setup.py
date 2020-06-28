@@ -19,7 +19,7 @@ setuptools.setup(
     extras_require={
         "dev": ["bandit", "black", "detox", "flake8", "isort", "mypy", "pylint"]
     },
-    install_requires=["polib", "docutils>=0.11", "regex"],
+    install_requires=["polib", "docutils>=0.11", "regex", "cyhunspell", "nltk"],
     license="MIT license",
     keywords="po spell gettext reStructuredText check sphinx translation",
     classifiers=[
