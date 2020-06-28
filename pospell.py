@@ -125,11 +125,12 @@ def strip_rst(line):
     return str(visitor)
 
 
-def clear(po_path, line, drop_capitalized=False):
+def clear(line, drop_capitalized=False, po_path=""):
     """Clear various other syntaxes we may encounter in a line.
     """
     # Normalize spaces
-    line = regex.sub(r"\s+", " ", line)
+    line = regex.sub(r"\s+", " ", line).replace("\xad", "")
+
     to_drop = {
         r'<a href="[^"]*?">',
         # Strip accronyms
@@ -143,7 +144,6 @@ def clear(po_path, line, drop_capitalized=False):
         r"[0-9]+h",  # Hours
         r"%\([a-z_]+?\)[diouxXeEfFgGcrsa%]",  # Sphinx variable
         r"« . »",  # Single letter examples (typically in Unicode documentation)
-        "\xad",  # soft hyphen
     }
     if drop_capitalized:
         to_drop.add(
@@ -177,7 +177,7 @@ def po_to_text(po_path, drop_capitalized=False):
         while lines < entry.linenum:
             buffer.append("")
             lines += 1
-        buffer.append(clear(po_path, strip_rst(entry.msgstr), drop_capitalized))
+        buffer.append(clear(strip_rst(entry.msgstr), drop_capitalized, po_path=po_path))
         lines += 1
     return "\n".join(buffer)
 
