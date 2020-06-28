@@ -1,5 +1,6 @@
 """pospell is a spellcheckers for po files containing reStructuedText.
 """
+from collections import defaultdict
 import io
 import logging
 import subprocess
@@ -22,6 +23,7 @@ import regex
 __version__ = "1.0.4"
 
 DEFAULT_DROP_CAPITALIZED = {"fr": True, "fr_FR": True}
+
 
 try:
     HUNSPELL_VERSION = subprocess.check_output(
@@ -256,35 +258,35 @@ def spell_check(
 
     Debug only will show what's passed to Hunspell instead of passing it.
     """
-    errors = 0
+    errors = []
     personal_dict_arg = ["-p", personal_dict] if personal_dict else []
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tmpdir = Path(tmpdirname)
-        for po_file in po_files:
-            if debug_only:
-                print(po_to_text(str(po_file), drop_capitalized))
-                continue
-            (tmpdir / po_file.name).write_text(
-                po_to_text(str(po_file), drop_capitalized)
+    for po_file in po_files:
+        if debug_only:
+            print(po_to_text(str(po_file), drop_capitalized))
+            continue
+        text_for_hunspell = po_to_text(str(po_file), drop_capitalized)
+        try:
+            output = subprocess.run(
+                ["hunspell", "-d", language, "-l"] + personal_dict_arg,
+                universal_newlines=True,
+                input=text_for_hunspell,
+                stdout=subprocess.PIPE,
             )
-            try:
-                output = subprocess.check_output(
-                    ["hunspell", "-d", language]
-                    + personal_dict_arg
-                    + ["-u3", str(tmpdir / po_file.name)],
-                    universal_newlines=True,
-                )
-            except subprocess.CalledProcessError:
-                return -1
-            for line in output.split("\n"):
-                match = regex.match(
-                    r"(?P<path>.*):(?P<line>[0-9]+): Locate: (?P<error>.*) \| Try: .*$",
-                    line,
-                )
-                if match:
-                    errors += 1
-                    print(po_file, match.group("line"), match.group("error"), sep=":")
-    return errors
+        except subprocess.CalledProcessError:
+            return -1
+        if not output.stdout:
+            continue  # No errors :)
+        line_of_words = defaultdict(set)
+        for line, text in enumerate(text_for_hunspell.split("\n"), start=1):
+            for word in text.split():
+                line_of_words[word].add(line)
+        for misspelled_word in set(output.stdout.split("\n")):
+            for line_number in line_of_words[misspelled_word]:
+                errors.append((po_file, line_number, misspelled_word))
+    errors.sort()
+    for error in errors:
+        print(":".join(str(token) for token in error))
+    return len(errors)
 
 
 def gracefull_handling_of_missing_dicts(language):
