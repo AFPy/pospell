@@ -3,95 +3,70 @@ from pospell import clear, strip_rst
 
 def test_clear():
     # We don't remove legitimally capitalized first words:
-    assert clear("test", "Sport is great.") == "Sport is great."
-    assert clear("test", "Sport is great.", drop_capitalized=True) == "Sport is great."
+    assert clear("Sport is great.") == "Sport is great."
+    assert clear("Sport is great.", True) == "Sport is great."
 
     # Sometimes we can't guess it's a firstname:
-    assert clear("test", "Julien Palard teste.") == "Julien Palard teste."
-    assert (
-        clear("test", "Julien Palard teste.", drop_capitalized=True) == "Julien  teste."
-    )
+    assert clear("Julien Palard teste.") == "Julien Palard teste."
+    assert "Palard" not in clear("Julien Palard teste.", True)
 
     # We remove capitalized words in the middle of a sentence
     # they are typically names
-    assert clear("test", "Great is Unicode.") == "Great is Unicode."
-    assert clear("test", "Great is Unicode.", drop_capitalized=True) == "Great is ."
+    assert clear("Great is Unicode.") == "Great is Unicode."
+    assert "Unicode" not in clear("Great is Unicode.", True)
 
     # We remove capitalized words even prefixed with l' in french.
-    assert (
-        clear("test", "Bah si, l'Unicode c'est bien.")
-        == "Bah si, l'Unicode c'est bien."
-    )
-    assert (
-        clear("test", "Bah si, l'Unicode c'est bien.", drop_capitalized=True)
-        == "Bah si,  c'est bien."
-    )
+    assert clear("Bah si, l'Unicode c'est bien.") == "Bah si, l'Unicode c'est bien."
+    assert "Unicode" not in clear("Bah si, l'Unicode c'est bien.", True)
 
     # We remove single letters in quotes
-    assert clear("test", "La lettre « é » est seule.") == "La lettre  est seule."
+    assert "é" not in clear("La lettre « é » est seule.")
 
     # We remove soft hyphens
-    assert clear("test", "some\xadthing") == "something"
+    assert clear("some\xadthing") == "something"
 
     # We drop hours because hunspell whines on them
-    assert clear("test", "Rendez-vous à 10h chez Murex") == "Rendez-vous à  chez Murex"
+    assert "10h" not in clear("Rendez-vous à 10h chez Murex")
 
     # When we removed a dashed name, remove it all
-    assert clear("test", "Marc-André Lemburg a fait") != "Marc- Lemburg a fait"
+    assert clear("Marc-André Lemburg a fait").strip() == "Marc-André Lemburg a fait"
+    assert "Marc-André" in clear("Marc-André Lemburg a fait", True)
+    assert "Lemburg" not in clear("Marc-André Lemburg a fait", True)
 
     # Even in the middle of a sentence
-    assert (
-        clear("test", "Hier, Marc-André Lemburg a fait")
-        == "Hier, Marc-André Lemburg a fait"
-    )
+    assert clear("Hier, Marc-André Lemburg a fait") == "Hier, Marc-André Lemburg a fait"
+    assert "Marc-André" not in clear("Hier, Marc-André Lemburg a fait", True)
+    assert "André" not in clear("Hier, Marc-André Lemburg a fait", True)
+    assert "Marc" not in clear("Hier, Marc-André Lemburg a fait", True)
+    assert "Lemburg" not in clear("Hier, Marc-André Lemburg a fait", True)
 
     # We remove variables
-    assert clear("test", "Starting {days_since} days ago") == "Starting  days ago"
+    assert "days_since" not in clear("Starting {days_since} days ago")
 
     # Drop PEP 440 versions
-    assert (
-        clear("test", "under python 1.6a1, 1.5.2, and earlier.")
-        == "under python , , and earlier."
-    )
+    assert "1.6a1" not in clear("under python 1.6a1, 1.5.2, and earlier.")
+    assert "1.5.2" not in clear("under python 1.6a1, 1.5.2, and earlier.")
 
     # Double space should change nothing
-    assert clear("test", "Test. Aujourd'hui, j'ai faim.") == clear(
-        "test", "Test.  Aujourd'hui, j'ai faim."
+    assert clear("Test. Aujourd'hui, j'ai faim.") == clear(
+        "Test.  Aujourd'hui, j'ai faim."
     )
 
-    assert (
-        clear("test", strip_rst(":pep:`305` - Interface des fichiers"))
-        == "Interface des fichiers"
-    )
+    assert ":pep:`305`" not in clear(strip_rst(":pep:`305` - Interface des fichiers"))
 
 
 def test_clear_accronyms():
     for drop_capitalized in True, False:
         # We always drop accronyms
-        assert (
-            clear("test", "HTTP is great.", drop_capitalized=drop_capitalized)
-            == " is great."
-        )
+        assert "HTTP" not in clear("HTTP is great.", drop_capitalized)
 
         # Even suffixed with a number
-        assert (
-            clear("test", "POSIX.1 is great.", drop_capitalized=drop_capitalized)
-            == " is great."
-        )
+        assert "POSIX.1" not in clear("POSIX.1 is great.", drop_capitalized)
 
         # Correctly drop prefix of accronyms
-        assert (
-            clear("test", "non-HTTP is bad.", drop_capitalized=drop_capitalized)
-            == " is bad."
-        )
+        assert "non-HTTP" not in clear("non-HTTP is bad.", drop_capitalized)
 
         # Also skip accronyms in the middle of a sentence
-        assert (
-            clear("test", "Yes HTTP is great.", drop_capitalized=drop_capitalized)
-            == "Yes  is great."
-        )
+        assert "HTTP" not in clear("Yes HTTP is great.", drop_capitalized)
 
-        assert (
-            clear("", "Ho. PEPs good.", drop_capitalized=drop_capitalized)
-            == "Ho.  good."
-        )
+        assert "PEPs" not in clear("Ho. PEPs good.", drop_capitalized)
