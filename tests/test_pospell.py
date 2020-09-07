@@ -1,5 +1,43 @@
-from pospell import clear, strip_rst
+from pospell import clear, strip_rst, spell_check
+from test.support import change_cwd
+import pytest
 
+POText = """
+  msgid ""
+  msgstr ""
+  "Project-Id-Version: Python 3\n"
+  "POT-Creation-Date: 2017-04-02 22:11+0200\n"
+  "PO-Revision-Date: 2018-07-23 17:55+0200\n"
+  "Language: fr\n"
+  "MIME-Version: 1.0\n"
+  "Content-Type: text/plain; charset=UTF-8\n"
+  "Content-Transfer-Encoding: 8bit\n"
+
+  #: ../Doc/about.rst:3
+  msgid "About these documents"
+  msgstr "À propos de ces documents"
+
+  #: ../Doc/about.rst:6
+  msgid ""
+  "These documents are generated from `reStructuredText`_ sources by `Sphinx`_, "
+  "a document processor specifically written for the Python documentation."
+  msgstr ""
+  "Ces documents sont générés à partir de sources en `reStructuredText`_ par "
+  "`Sphinx`_, un analyseur de documents spécialement conçu pour la "
+  "documentation Python."
+  """
+
+@pytest.fixture
+def about_po(tmp_path):
+    (tmp_path / "about.po").write_text(POText)
+    with change_cwd(tmp_path):
+        yield tmp_path
+
+@pytest.fixture
+def badfile_po(tmp_path):
+    (tmp_path / "badfile.po").write_text("Not a po file")
+    with change_cwd(tmp_path):
+        yield tmp_path
 
 def test_clear():
     # We don't remove legitimally capitalized first words:
@@ -70,3 +108,15 @@ def test_clear_accronyms():
         assert "HTTP" not in clear("Yes HTTP is great.", drop_capitalized)
 
         assert "PEPs" not in clear("Ho. PEPs good.", drop_capitalized)
+
+
+def test_polib_correct_po_file(about_po):
+    assert 0 == spell_check(["about.po"], None, "fr")
+
+
+def test_polib_bad_file_po(badfile_po):
+    assert -1 == spell_check(["badfile.po"], None, "fr")
+
+
+def test_polib_non_existent_file():
+    assert -1 == spell_check(['non_existent_file.po'], None, "fr")

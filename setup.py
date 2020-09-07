@@ -17,7 +17,7 @@ setuptools.setup(
     py_modules=["pospell"],
     entry_points={"console_scripts": ["pospell=pospell:main"]},
     extras_require={
-        "dev": ["bandit", "black", "detox", "flake8", "isort", "mypy", "pylint"]
+        "dev": ["bandit", "black", "detox", "flake8", "isort", "mypy", "pylint", "pytest"]
     },
     install_requires=["polib", "docutils>=0.11", "regex"],
     license="MIT license",

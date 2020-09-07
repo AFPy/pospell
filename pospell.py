@@ -264,7 +264,11 @@ def spell_check(
         if debug_only:
             print(po_to_text(str(po_file), drop_capitalized))
             continue
-        text_for_hunspell = po_to_text(str(po_file), drop_capitalized)
+        try:
+            text_for_hunspell = po_to_text(str(po_file), drop_capitalized)
+        except OSError as e:
+            print(f"Error opening '{po_file}': {e}", file=sys.stderr)
+            return -1
         try:
             output = subprocess.run(
                 ["hunspell", "-d", language, "-l"] + personal_dict_arg,
