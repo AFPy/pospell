@@ -1,4 +1,7 @@
-from pospell import clear, strip_rst
+from types import SimpleNamespace
+from pathlib import Path
+
+from pospell import clear, strip_rst, spell_check
 
 
 def test_clear():
@@ -70,3 +73,66 @@ def test_clear_accronyms():
         assert "HTTP" not in clear("Yes HTTP is great.", drop_capitalized)
 
         assert "PEPs" not in clear("Ho. PEPs good.", drop_capitalized)
+
+
+def test_with_an_error(tmp_path, capsys, monkeypatch):
+    import subprocess
+
+    tmp_path = Path(tmp_path)
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(stdout="Pyhton\n"),
+    )
+    (tmp_path / "test.po").write_text(
+        """
+msgid "Python FTW!"
+msgstr "Gloire à Pyhton !"
+"""
+    )
+    assert spell_check([tmp_path / "test.po"]) > 0
+    captured = capsys.readouterr()
+    assert "Pyhton" in captured.out
+    assert not captured.err
+
+
+def test_with_no_error(tmp_path, capsys, monkeypatch):
+    import subprocess
+
+    tmp_path = Path(tmp_path)
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(stdout=""),
+    )
+    (tmp_path / "test.po").write_text(
+        """
+msgid "Python FTW!"
+msgstr "Gloire à Python !"
+"""
+    )
+    assert spell_check([tmp_path / "test.po"]) == 0
+    captured = capsys.readouterr()
+    assert not captured.out
+    assert not captured.err
+
+
+def test_issue_19(tmp_path, capsys, monkeypatch):
+    import subprocess
+
+    tmp_path = Path(tmp_path)
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(stdout="pubb\nsubb\n"),
+    )
+    (tmp_path / "test.po").write_text(
+        """
+msgid "pubb/subb yo"
+msgstr "pubb/subb"
+"""
+    )
+    assert spell_check([tmp_path / "test.po"]) > 0
+    captured = capsys.readouterr()
+    assert "pubb" in captured.out
+    assert not captured.err

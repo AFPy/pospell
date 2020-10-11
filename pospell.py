@@ -246,7 +246,11 @@ def parse_args():
 
 
 def spell_check(
-    po_files, personal_dict, language, drop_capitalized=False, debug_only=False
+    po_files,
+    personal_dict=None,
+    language="en_EN",
+    drop_capitalized=False,
+    debug_only=False,
 ):
     """Check for spelling mistakes in the files po_files (po format,
     containing restructuredtext), for the given language.
@@ -273,12 +277,10 @@ def spell_check(
         if not output.stdout:
             continue  # No errors :)
         line_of_words = defaultdict(set)
-        for line, text in enumerate(text_for_hunspell.split("\n"), start=1):
-            for word in text.split():
-                line_of_words[word].add(line)
-        for misspelled_word in set(output.stdout.split("\n")):
-            for line_number in line_of_words[misspelled_word]:
-                errors.append((po_file, line_number, misspelled_word))
+        for misspelled_word in {word for word in output.stdout.split("\n") if word}:
+            for line_number, line in enumerate(text_for_hunspell.split("\n"), start=1):
+                if misspelled_word in line:
+                    errors.append((po_file, line_number, misspelled_word))
     errors.sort()
     for error in errors:
         print(":".join(str(token) for token in error))
