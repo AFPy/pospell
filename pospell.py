@@ -67,13 +67,11 @@ class NodeToTextVisitor(docutils.nodes.NodeVisitor):
         super().dispatch_departure(node)
 
     def unknown_visit(self, node):
-        """Mandatory implementation to visit unknwon nodes.
-        """
+        """Mandatory implementation to visit unknwon nodes."""
         # print(" " * self.depth * 4, node.__class__.__name__, ":", node)
 
     def unknown_departure(self, node):
-        """To help debugging tree.
-        """
+        """To help debugging tree."""
         # print(node, repr(node), node.__class__.__name__)
 
     def visit_emphasis(self, node):
@@ -126,8 +124,7 @@ def strip_rst(line):
 
 
 def clear(line, drop_capitalized=False, po_path=""):
-    """Clear various other syntaxes we may encounter in a line.
-    """
+    """Clear various other syntaxes we may encounter in a line."""
     # Normalize spaces
     line = regex.sub(r"\s+", " ", line).replace("\xad", "")
 
@@ -183,8 +180,7 @@ def po_to_text(po_path, drop_capitalized=False):
 
 
 def parse_args():
-    """Parse command line arguments.
-    """
+    """Parse command line arguments."""
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -290,8 +286,7 @@ def spell_check(
 
 
 def gracefull_handling_of_missing_dicts(language):
-    """Check if hunspell dictionary for given language is installed.
-    """
+    """Check if hunspell dictionary for given language is installed."""
     hunspell_dash_d = subprocess.check_output(
         ["hunspell", "-D"], universal_newlines=True, stderr=subprocess.STDOUT
     )
@@ -325,8 +320,7 @@ https://github.com/JulienPalard/pospell/) so I can enhance this error message.
 
 
 def main():
-    """Module entry point.
-    """
+    """Module entry point."""
     args = parse_args()
     logging.basicConfig(level=50 - 10 * args.verbose)
     default_drop_capitalized = DEFAULT_DROP_CAPITALIZED.get(args.language, False)
