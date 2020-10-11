@@ -2,6 +2,8 @@
 """
 from collections import defaultdict
 import io
+from string import digits
+from unicodedata import category
 import logging
 import subprocess
 import sys
@@ -108,9 +110,27 @@ def strip_rst(line):
         line = line[:-2]
     parser = docutils.parsers.rst.Parser()
     components = (docutils.parsers.rst.Parser,)
-    settings = docutils.frontend.OptionParser(
-        components=components
-    ).get_default_values()
+    settings = docutils.frontend.Values(
+        {
+            "report_level": 2,
+            "halt_level": 4,
+            "exit_status_level": 5,
+            "debug": None,
+            "warning_stream": None,
+            "error_encoding": "utf-8",
+            "error_encoding_error_handler": "backslashreplace",
+            "language_code": "en",
+            "id_prefix": "",
+            "auto_id_prefix": "id",
+            "pep_references": None,
+            "pep_base_url": "http://www.python.org/dev/peps/",
+            "pep_file_url_template": "pep-%04d",
+            "rfc_references": None,
+            "rfc_base_url": "http://tools.ietf.org/html/",
+            "tab_width": 8,
+            "trim_footnote_reference_space": None,
+        }
+    )
     stderr_stringio = io.StringIO()
     with redirect_stderr(stderr_stringio):
         document = new_document("<rst-doc>", settings=settings)
@@ -130,15 +150,7 @@ def clear(line, drop_capitalized=False, po_path=""):
 
     to_drop = {
         r'<a href="[^"]*?">',
-        # Strip accronyms
-        r"\b[\w-]*\p{Uppercase}{2,}[0-9.\w-]*\b",
-        r"---?",  # -- and --- separators to be ignored
-        r" - ",  # Drop lone dashes (sometimes used in place of -- or ---)
-        r"-\\ ",  # Ignore "MINUS BACKSLASH SPACE" typically used in
-        # formulas, like '-\ *π*' but *π* gets removed too
         r"{[a-z_]*?}",  # Sphinx variable
-        r"'?-?\b([0-9]+\.)*[0-9]+\.[0-9abcrx]+\b'?",  # Versions
-        r"[0-9]+h",  # Hours
         r"%\([a-z_]+?\)[diouxXeEfFgGcrsa%]",  # Sphinx variable
         r"« . »",  # Single letter examples (typically in Unicode documentation)
     }
@@ -245,10 +257,25 @@ def parse_args():
     return args
 
 
+def look_like_a_word(word):
+    """Used to filter out non-words like `---` or `-0700` so they don't
+    get reported. They typically are not errors.
+    """
+    if not word:
+        return False
+    if any(digit in word for digit in digits):
+        return False
+    if len([c for c in word if category(c) == "Lu"]) > 1:
+        return False  # Probably an accronym, or a name like CPython, macOS, SQLite, ...
+    if "-" in word:
+        return False
+    return True
+
+
 def spell_check(
     po_files,
     personal_dict=None,
-    language="en_EN",
+    language="en_US",
     drop_capitalized=False,
     debug_only=False,
 ):
@@ -260,24 +287,27 @@ def spell_check(
     """
     errors = []
     personal_dict_arg = ["-p", personal_dict] if personal_dict else []
+    texts_for_hunspell = {}
     for po_file in po_files:
         if debug_only:
             print(po_to_text(str(po_file), drop_capitalized))
             continue
-        text_for_hunspell = po_to_text(str(po_file), drop_capitalized)
-        try:
-            output = subprocess.run(
-                ["hunspell", "-d", language, "-l"] + personal_dict_arg,
-                universal_newlines=True,
-                input=text_for_hunspell,
-                stdout=subprocess.PIPE,
-            )
-        except subprocess.CalledProcessError:
-            return -1
-        if not output.stdout:
-            continue  # No errors :)
-        line_of_words = defaultdict(set)
-        for misspelled_word in {word for word in output.stdout.split("\n") if word}:
+        texts_for_hunspell[po_file] = po_to_text(str(po_file), drop_capitalized)
+    try:
+        output = subprocess.run(
+            ["hunspell", "-d", language, "-l"] + personal_dict_arg,
+            universal_newlines=True,
+            input="\n".join(texts_for_hunspell.values()),
+            stdout=subprocess.PIPE,
+        )
+    except subprocess.CalledProcessError:
+        return -1
+    if not output.stdout:
+        return 0
+    for misspelled_word in {
+        word for word in output.stdout.split("\n") if look_like_a_word(word)
+    }:
+        for po_file, text_for_hunspell in texts_for_hunspell.items():
             for line_number, line in enumerate(text_for_hunspell.split("\n"), start=1):
                 if misspelled_word in line:
                     errors.append((po_file, line_number, misspelled_word))

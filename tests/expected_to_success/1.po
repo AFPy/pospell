@@ -1,0 +1,2 @@
+msgid "Python doc is translated!"
+msgstr "Python doc is translated!"

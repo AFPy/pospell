@@ -1,0 +1,14 @@
+msgid "HTTP is great."
+msgstr "HTTP is great."
+
+msgid "POSIX.1 is great too."
+msgstr "POSIX.1 is great too."
+
+msgid "non-HTTP"
+msgstr "non-HTTP"
+
+msgid "HTTP"
+msgstr "HTTP"
+
+msgid "PEPs"
+msgstr "PEPS"

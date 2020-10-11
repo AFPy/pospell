@@ -1,5 +1,8 @@
+import os
 from types import SimpleNamespace
 from pathlib import Path
+
+import pytest
 
 from pospell import clear, strip_rst, spell_check
 
@@ -28,9 +31,6 @@ def test_clear():
     # We remove soft hyphens
     assert clear("some\xadthing") == "something"
 
-    # We drop hours because hunspell whines on them
-    assert "10h" not in clear("Rendez-vous à 10h chez Murex")
-
     # When we removed a dashed name, remove it all
     assert clear("Marc-André Lemburg a fait").strip() == "Marc-André Lemburg a fait"
     assert "Marc-André" in clear("Marc-André Lemburg a fait", True)
@@ -46,10 +46,6 @@ def test_clear():
     # We remove variables
     assert "days_since" not in clear("Starting {days_since} days ago")
 
-    # Drop PEP 440 versions
-    assert "1.6a1" not in clear("under python 1.6a1, 1.5.2, and earlier.")
-    assert "1.5.2" not in clear("under python 1.6a1, 1.5.2, and earlier.")
-
     # Double space should change nothing
     assert clear("Test. Aujourd'hui, j'ai faim.") == clear(
         "Test.  Aujourd'hui, j'ai faim."
@@ -58,81 +54,16 @@ def test_clear():
     assert ":pep:`305`" not in clear(strip_rst(":pep:`305` - Interface des fichiers"))
 
 
-def test_clear_accronyms():
-    for drop_capitalized in True, False:
-        # We always drop accronyms
-        assert "HTTP" not in clear("HTTP is great.", drop_capitalized)
-
-        # Even suffixed with a number
-        assert "POSIX.1" not in clear("POSIX.1 is great.", drop_capitalized)
-
-        # Correctly drop prefix of accronyms
-        assert "non-HTTP" not in clear("non-HTTP is bad.", drop_capitalized)
-
-        # Also skip accronyms in the middle of a sentence
-        assert "HTTP" not in clear("Yes HTTP is great.", drop_capitalized)
-
-        assert "PEPs" not in clear("Ho. PEPs good.", drop_capitalized)
+FIXTURE_DIR = Path(__file__).resolve().parent
 
 
-def test_with_an_error(tmp_path, capsys, monkeypatch):
-    import subprocess
-
-    tmp_path = Path(tmp_path)
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *args, **kwargs: SimpleNamespace(stdout="Pyhton\n"),
-    )
-    (tmp_path / "test.po").write_text(
-        """
-msgid "Python FTW!"
-msgstr "Gloire à Pyhton !"
-"""
-    )
-    assert spell_check([tmp_path / "test.po"]) > 0
-    captured = capsys.readouterr()
-    assert "Pyhton" in captured.out
-    assert not captured.err
+@pytest.mark.parametrize("po_file", (FIXTURE_DIR / "expected_to_fail").glob("*.po"))
+def test_expected_to_fail(po_file, capsys):
+    assert spell_check([po_file]) > 0
+    assert not capsys.readouterr().err
 
 
-def test_with_no_error(tmp_path, capsys, monkeypatch):
-    import subprocess
-
-    tmp_path = Path(tmp_path)
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *args, **kwargs: SimpleNamespace(stdout=""),
-    )
-    (tmp_path / "test.po").write_text(
-        """
-msgid "Python FTW!"
-msgstr "Gloire à Python !"
-"""
-    )
-    assert spell_check([tmp_path / "test.po"]) == 0
-    captured = capsys.readouterr()
-    assert not captured.out
-    assert not captured.err
-
-
-def test_issue_19(tmp_path, capsys, monkeypatch):
-    import subprocess
-
-    tmp_path = Path(tmp_path)
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *args, **kwargs: SimpleNamespace(stdout="pubb\nsubb\n"),
-    )
-    (tmp_path / "test.po").write_text(
-        """
-msgid "pubb/subb yo"
-msgstr "pubb/subb"
-"""
-    )
-    assert spell_check([tmp_path / "test.po"]) > 0
-    captured = capsys.readouterr()
-    assert "pubb" in captured.out
-    assert not captured.err
+@pytest.mark.parametrize("po_file", (FIXTURE_DIR / "expected_to_success").glob("*.po"))
+def test_expected_to_success(po_file, capsys):
+    assert spell_check([po_file]) == 0
+    assert not capsys.readouterr().err

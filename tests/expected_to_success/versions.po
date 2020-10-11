@@ -1,0 +1,2 @@
+msgid "under python 1.6a1, 1.5.2, and earlier."
+msgstr "under python 1.6a1, 1.5.2, and earlier."
