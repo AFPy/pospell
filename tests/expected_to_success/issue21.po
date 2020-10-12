@@ -1,0 +1,2 @@
+msgid "Un rôle de code :code:`object().__str__`"
+msgstr "A code role :code:`object().__str__`."
