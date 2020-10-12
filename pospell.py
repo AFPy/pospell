@@ -1,13 +1,11 @@
 """pospell is a spellcheckers for po files containing reStructuedText.
 """
-from collections import defaultdict
 import io
 from string import digits
 from unicodedata import category
 import logging
 import subprocess
 import sys
-import tempfile
 from contextlib import redirect_stderr
 from itertools import chain
 from pathlib import Path
@@ -33,7 +31,7 @@ try:
     ).split("\n")[0]
 except FileNotFoundError:
     print("hunspell not found, please install hunspell.", file=sys.stderr)
-    exit(1)
+    sys.exit(1)
 
 
 class DummyNodeClass(docutils.nodes.Inline, docutils.nodes.TextElement):
@@ -109,7 +107,6 @@ def strip_rst(line):
         # Drop :: at the end, it would cause Literal block expected
         line = line[:-2]
     parser = docutils.parsers.rst.Parser()
-    components = (docutils.parsers.rst.Parser,)
     settings = docutils.frontend.Values(
         {
             "report_level": 2,
@@ -251,10 +248,10 @@ def parse_args():
     if args.drop_capitalized and args.no_drop_capitalized:
         print("Error: don't provide both --drop-capitalized AND --no-drop-capitalized.")
         parser.print_help()
-        exit(1)
+        sys.exit(1)
     if not args.po_file and not args.modified:
         parser.print_help()
-        exit(1)
+        sys.exit(1)
     return args
 
 
@@ -296,26 +293,41 @@ def spell_check(
         texts_for_hunspell[po_file] = po_to_text(str(po_file), drop_capitalized)
     try:
         output = subprocess.run(
-            ["hunspell", "-d", language, "-l"] + personal_dict_arg,
+            ["hunspell", "-d", language, "-a"] + personal_dict_arg,
             universal_newlines=True,
             input="\n".join(texts_for_hunspell.values()),
             stdout=subprocess.PIPE,
         )
     except subprocess.CalledProcessError:
         return -1
-    if not output.stdout:
-        return 0
-    for misspelled_word in {
-        word for word in output.stdout.split("\n") if look_like_a_word(word)
-    }:
-        for po_file, text_for_hunspell in texts_for_hunspell.items():
-            for line_number, line in enumerate(text_for_hunspell.split("\n"), start=1):
-                if misspelled_word in line:
-                    errors.append((po_file, line_number, misspelled_word))
-    errors.sort()
-    for error in errors:
-        print(":".join(str(token) for token in error))
-    return len(errors)
+
+    errors = 0
+    checked_files = iter(texts_for_hunspell.items())
+    checked_file_name, checked_text = next(checked_files)
+    checked_lines = iter(checked_text.split("\n"))
+    currently_checked_line = next(checked_lines)
+    current_line_number = 1
+    for line in output.stdout.split("\n")[1:]:
+        if not line:
+            try:
+                currently_checked_line = next(checked_lines)
+                current_line_number += 1
+            except StopIteration:
+                try:
+                    checked_file_name, checked_text = next(checked_files)
+                    checked_lines = iter(checked_text.split("\n"))
+                    currently_checked_line = next(checked_lines)
+                    current_line_number = 1
+                except StopIteration:
+                    return errors
+            continue
+        if line == "*":  # OK
+            continue
+        if line[0] == "&":
+            _, original, count, offset, *miss = line.split()
+            if look_like_a_word(original):
+                print(checked_file_name, current_line_number, original, sep=":")
+                errors += 1
 
 
 def gracefull_handling_of_missing_dicts(language):
@@ -349,7 +361,7 @@ https://github.com/JulienPalard/pospell/) so I can enhance this error message.
                 language=language
             )
         )
-    exit(1)
+    sys.exit(1)
 
 
 def main():
@@ -383,7 +395,7 @@ def main():
     )
     if errors == -1:
         gracefull_handling_of_missing_dicts(args.language)
-    exit(0 if errors == 0 else -1)
+    sys.exit(0 if errors == 0 else -1)
 
 
 if __name__ == "__main__":
