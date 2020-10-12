@@ -328,6 +328,7 @@ def spell_check(
             if look_like_a_word(original):
                 print(checked_file_name, current_line_number, original, sep=":")
                 errors += 1
+    return errors
 
 
 def gracefull_handling_of_missing_dicts(language):
