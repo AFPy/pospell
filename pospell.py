@@ -25,6 +25,10 @@ __version__ = "1.0.10"
 DEFAULT_DROP_CAPITALIZED = {"fr": True, "fr_FR": True}
 
 
+class POSpellException(Exception):
+    pass
+
+
 try:
     HUNSPELL_VERSION = subprocess.check_output(
         ["hunspell", "--version"], universal_newlines=True
@@ -189,7 +193,10 @@ def po_to_text(po_path, drop_capitalized=False):
     """
     buffer = []
     lines = 0
-    entries = polib.pofile(po_path)
+    try:
+        entries = polib.pofile(Path(po_path).read_text())
+    except Exception as err:
+        raise POSpellException(str(err)) from err
     for entry in entries:
         if entry.msgid == entry.msgstr:
             continue
@@ -402,9 +409,17 @@ def main():
             for status, filename in git_status_lines
             if filename.endswith(".po")
         )
-    errors = spell_check(
-        args.po_file, args.personal_dict, args.language, drop_capitalized, args.debug
-    )
+    try:
+        errors = spell_check(
+            args.po_file,
+            args.personal_dict,
+            args.language,
+            drop_capitalized,
+            args.debug,
+        )
+    except POSpellException as err:
+        print(err, file=sys.stderr)
+        sys.exit(-1)
     if errors == -1:
         gracefull_handling_of_missing_dicts(args.language)
     sys.exit(0 if errors == 0 else -1)
