@@ -170,6 +170,18 @@ def clear(line, drop_capitalized=False, po_path=""):
     return regex.sub("|".join(to_drop), r" ", line)
 
 
+def quote_for_hunspell(text):
+    """
+    Quoting the manpage:
+    It is recommended that programmatic interfaces prefix
+    every data line with an uparrow to protect themselves
+    against future changes in hunspell."""
+    out = []
+    for line in text.split("\n"):
+        out.append("^" + line if line else "")
+    return "\n".join(out)
+
+
 def po_to_text(po_path, drop_capitalized=False):
     """Converts a po file to a text file, by stripping the msgids and all
     po syntax, but by keeping the kept lines at their same position /
@@ -295,7 +307,7 @@ def spell_check(
         output = subprocess.run(
             ["hunspell", "-d", language, "-a"] + personal_dict_arg,
             universal_newlines=True,
-            input="\n".join(texts_for_hunspell.values()),
+            input=quote_for_hunspell("\n".join(texts_for_hunspell.values())),
             stdout=subprocess.PIPE,
         )
     except subprocess.CalledProcessError:
