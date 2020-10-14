@@ -2,6 +2,10 @@
 
 `pospell` is a spellcheckers for po files containing reStructuedText.
 
+## Pospell is part of poutils!
+
+[Poutils](https://pypi.org/project/poutils) (`.po` utils) is a metapackage to easily install useful Python tools to use with po files
+and `pospell` is a part of it! Go check out [Poutils](https://pypi.org/project/poutils) to discover the other tools!
 
 ## Examples
 
