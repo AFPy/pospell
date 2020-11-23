@@ -335,6 +335,8 @@ def spell_check(
             print(po_to_text(str(po_file), drop_capitalized))
             continue
         texts_for_hunspell[po_file] = po_to_text(str(po_file), drop_capitalized)
+    if debug_only:
+        return 0
     try:
         output = subprocess.run(
             ["hunspell", "-d", language, "-a"] + personal_dict_arg,

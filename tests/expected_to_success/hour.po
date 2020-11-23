@@ -1,2 +1,2 @@
-msgid "Rendez-vous à 10h chez Murex"
-msgstr "See your at 10h at Murex"
+msgid "Rendez-vous à 10h à la fête"
+msgstr "See your at 10h at the party"
