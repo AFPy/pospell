@@ -1,11 +1,11 @@
-"""pospell is a spellcheckers for po files containing reStructuedText.
-"""
+"""pospell is a spellcheckers for po files containing reStructuedText."""
 import io
 from string import digits
 from unicodedata import category
 import logging
 import subprocess
 import sys
+from typing import Dict
 from contextlib import redirect_stderr
 from itertools import chain
 from pathlib import Path
@@ -26,7 +26,11 @@ DEFAULT_DROP_CAPITALIZED = {"fr": True, "fr_FR": True}
 
 
 class POSpellException(Exception):
-    pass
+    """All exceptions from this module inherit from this one."""
+
+
+class Unreachable(POSpellException):
+    """The code encontered a state that should be unreachable."""
 
 
 try:
@@ -39,10 +43,15 @@ except FileNotFoundError:
 
 
 class DummyNodeClass(docutils.nodes.Inline, docutils.nodes.TextElement):
-    pass
+    """Used to represent any unknown roles, so we can parse any rst blindly."""
 
 
 def monkey_patch_role(role):
+    """Patch docutils.parsers.rst.roles.role so it always match.
+
+    Giving a DummyNodeClass for unknown roles.
+    """
+
     def role_or_generic(role_name, language_module, lineno, reporter):
         base_role, message = role(role_name, language_module, lineno, reporter)
         if base_role is None:
@@ -57,56 +66,65 @@ roles.role = monkey_patch_role(roles.role)
 
 
 class NodeToTextVisitor(docutils.nodes.NodeVisitor):
+    """Recursively convert a docutils node to a Python string.
+
+    Usage:
+
+    >>> visitor = NodeToTextVisitor(document)
+    >>> document.walk(visitor)
+    >>> print(str(visitor))
+
+    It ignores (see IGNORE_LIST) some nodes, which we don't want in
+    hunspell (enphasis typically contain proper names that are unknown
+    to dictionaires).
+    """
+
+    IGNORE_LIST = (
+        "emphasis",
+        "superscript",
+        "title_reference",
+        "strong",
+        "DummyNodeClass",
+        "reference",
+        "literal",
+        "Text",
+    )
+
     def __init__(self, document):
+        """Initialize visitor for the given node/document."""
         self.output = []
-        self.depth = 0
         super().__init__(document)
-
-    def dispatch_visit(self, node):
-        self.depth += 1
-        super().dispatch_visit(node)
-
-    def dispatch_departure(self, node):
-        self.depth -= 1
-        super().dispatch_departure(node)
 
     def unknown_visit(self, node):
         """Mandatory implementation to visit unknwon nodes."""
-        # print(" " * self.depth * 4, node.__class__.__name__, ":", node)
 
-    def unknown_departure(self, node):
-        """To help debugging tree."""
-        # print(node, repr(node), node.__class__.__name__)
+    @staticmethod
+    def ignore(node):
+        """Just raise SkipChildren.
 
-    def visit_emphasis(self, node):
+        Used for all visit_* in the IGNORE_LIST.
+
+        See __getattr__.
+        """
         raise docutils.nodes.SkipChildren
 
-    def visit_superscript(self, node):
-        raise docutils.nodes.SkipChildren
-
-    def visit_title_reference(self, node):
-        raise docutils.nodes.SkipChildren
-
-    def visit_strong(self, node):
-        raise docutils.nodes.SkipChildren
-
-    def visit_DummyNodeClass(self, node):
-        raise docutils.nodes.SkipChildren
-
-    def visit_reference(self, node):
-        raise docutils.nodes.SkipChildren
-
-    def visit_literal(self, node):
-        raise docutils.nodes.SkipChildren
+    def __getattr__(self, name):
+        """Skip childrens from the IGNORE_LIST."""
+        if name.startswith("visit_") and name[6:] in self.IGNORE_LIST:
+            return self.ignore
+        raise AttributeError(name)
 
     def visit_Text(self, node):
+        """Keep this node text, this is typically what we want to spell check."""
         self.output.append(node.rawsource)
 
     def __str__(self):
+        """Give the accumulated strings."""
         return " ".join(self.output)
 
 
 def strip_rst(line):
+    """Transform reStructuredText to plain text."""
     if line.endswith("::"):
         # Drop :: at the end, it would cause Literal block expected
         line = line[:-2]
@@ -175,11 +193,13 @@ def clear(line, drop_capitalized=False, po_path=""):
 
 
 def quote_for_hunspell(text):
-    """
+    """Quote a paragraph so hunspell don't misinterpret it.
+
     Quoting the manpage:
     It is recommended that programmatic interfaces prefix
     every data line with an uparrow to protect themselves
-    against future changes in hunspell."""
+    against future changes in hunspell.
+    """
     out = []
     for line in text.split("\n"):
         out.append("^" + line if line else "")
@@ -187,9 +207,10 @@ def quote_for_hunspell(text):
 
 
 def po_to_text(po_path, drop_capitalized=False):
-    """Converts a po file to a text file, by stripping the msgids and all
-    po syntax, but by keeping the kept lines at their same position /
-    line number.
+    """Convert a po file to a text file.
+
+    This strips the msgids and all po syntax while keeping lines at
+    their same position / line number.
     """
     buffer = []
     lines = 0
@@ -232,12 +253,14 @@ def parse_args():
     parser.add_argument(
         "--drop-capitalized",
         action="store_true",
-        help="Always drop capitalized words in sentences (defaults according to the language).",
+        help="Always drop capitalized words in sentences"
+        " (defaults according to the language).",
     )
     parser.add_argument(
         "--no-drop-capitalized",
         action="store_true",
-        help="Never drop capitalized words in sentences (defaults according to the language).",
+        help="Never drop capitalized words in sentences"
+        " (defaults according to the language).",
     )
     parser.add_argument(
         "po_file",
@@ -275,7 +298,9 @@ def parse_args():
 
 
 def look_like_a_word(word):
-    """Used to filter out non-words like `---` or `-0700` so they don't
+    """Return True if the given str looks like a word.
+
+    Used to filter out non-words like `---` or `-0700` so they don't
     get reported. They typically are not errors.
     """
     if not word:
@@ -296,13 +321,13 @@ def spell_check(
     drop_capitalized=False,
     debug_only=False,
 ):
-    """Check for spelling mistakes in the files po_files (po format,
-    containing restructuredtext), for the given language.
+    """Check for spelling mistakes in the given po_files.
+
+    (po format, containing restructuredtext), for the given language.
     personal_dict allow to pass a personal dict (-p) option, to hunspell.
 
     Debug only will show what's passed to Hunspell instead of passing it.
     """
-    errors = []
     personal_dict_arg = ["-p", personal_dict] if personal_dict else []
     texts_for_hunspell = {}
     for po_file in po_files:
@@ -310,32 +335,48 @@ def spell_check(
             print(po_to_text(str(po_file), drop_capitalized))
             continue
         texts_for_hunspell[po_file] = po_to_text(str(po_file), drop_capitalized)
+    if debug_only:
+        return 0
     try:
         output = subprocess.run(
             ["hunspell", "-d", language, "-a"] + personal_dict_arg,
             universal_newlines=True,
             input=quote_for_hunspell("\n".join(texts_for_hunspell.values())),
             stdout=subprocess.PIPE,
+            check=True,
         )
     except subprocess.CalledProcessError:
         return -1
+    return parse_hunspell_output(texts_for_hunspell, output)
 
+
+def parse_hunspell_output(hunspell_input: Dict[str, str], hunspell_output) -> int:
+    """Parse `hunspell -a` output.
+
+    Print one line per error on stderr, of the following format:
+
+        FILE:LINE:ERROR
+
+    Returns the number of errors.
+
+    hunspell_input contains a dict of files: all_lines_for_this_file.
+    """
     errors = 0
-    checked_files = iter(texts_for_hunspell.items())
+    checked_files = iter(hunspell_input.items())
     checked_file_name, checked_text = next(checked_files)
     checked_lines = iter(checked_text.split("\n"))
-    currently_checked_line = next(checked_lines)
+    next(checked_lines)
     current_line_number = 1
-    for line in output.stdout.split("\n")[1:]:
+    for line in hunspell_output.stdout.split("\n")[1:]:
         if not line:
             try:
-                currently_checked_line = next(checked_lines)
+                next(checked_lines)
                 current_line_number += 1
             except StopIteration:
                 try:
                     checked_file_name, checked_text = next(checked_files)
                     checked_lines = iter(checked_text.split("\n"))
-                    currently_checked_line = next(checked_lines)
+                    next(checked_lines)
                     current_line_number = 1
                 except StopIteration:
                     return errors
@@ -343,10 +384,11 @@ def spell_check(
         if line == "*":  # OK
             continue
         if line[0] == "&":
-            _, original, count, offset, *miss = line.split()
+            _, original, *_ = line.split()
             if look_like_a_word(original):
                 print(checked_file_name, current_line_number, original, sep=":")
                 errors += 1
+    raise Unreachable("Got this one? I'm sorry, read XKCD 2200, then open an issue.")
 
 
 def gracefull_handling_of_missing_dicts(language):
@@ -384,7 +426,7 @@ https://github.com/JulienPalard/pospell/) so I can enhance this error message.
 
 
 def main():
-    """Module entry point."""
+    """Entry point (for command-line)."""
     args = parse_args()
     logging.basicConfig(level=50 - 10 * args.verbose)
     default_drop_capitalized = DEFAULT_DROP_CAPITALIZED.get(args.language, False)

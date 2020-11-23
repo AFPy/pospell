@@ -1,5 +1,3 @@
-import os
-from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
