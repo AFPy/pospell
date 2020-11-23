@@ -32,6 +32,10 @@ jobs:
         with:
           path: .tox
           key: ${{ matrix.tox.python-version }}-${{ hashFiles('tox.ini') }}-${{ hashFiles('requirements-dev.txt') }}
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y hunspell
       - name: Install tox
         run: python3 -m pip install tox
       - name: Run tox
