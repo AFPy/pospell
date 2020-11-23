@@ -1,0 +1,34 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: Run tox
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tox:
+          - py_version: '3.6'
+            env: py36
+          - py_version: '3.7'
+            env: py37
+          - py_version: '3.8'
+            env: py38,flake8,mypy,black,pylint,pydocstyle,coverage
+          - py_version: '3.9'
+            env: py39
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.tox.py_version }}
+      - name: Install tox
+        run: python3 -m pip install tox
+      - name: Run tox
+        run: tox -e ${{ matrix.tox.env }}
