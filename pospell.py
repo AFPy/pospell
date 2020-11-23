@@ -110,7 +110,7 @@ class NodeToTextVisitor(docutils.nodes.NodeVisitor):
 
     def __getattr__(self, name):
         """Skip childrens from the IGNORE_LIST."""
-        if name.startswith("visit_") and name[7:] in self.IGNORE_LIST:
+        if name.startswith("visit_") and name[6:] in self.IGNORE_LIST:
             return self.ignore
         raise AttributeError(name)
 
