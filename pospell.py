@@ -142,6 +142,7 @@ def strip_rst(line):
             "id_prefix": "",
             "auto_id_prefix": "id",
             "pep_references": None,
+            "line_length_limit": 10000,
             "pep_base_url": "http://www.python.org/dev/peps/",
             "pep_file_url_template": "pep-%04d",
             "rfc_references": None,
