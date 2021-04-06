@@ -149,6 +149,7 @@ def strip_rst(line):
             "tab_width": 8,
             "trim_footnote_reference_space": None,
             "syntax_highlight": "long",
+            "line_length_limit": 10000,
         }
     )
     stderr_stringio = io.StringIO()
