@@ -442,7 +442,7 @@ def main():
     )
     if args.modified:
         git_status = subprocess.check_output(
-            ["git", "status", "--porcelain"], encoding="utf-8"
+            ["git", "status", "--porcelain", "--no-renames"], encoding="utf-8"
         )
         git_status_lines = [
             line.split(maxsplit=2) for line in git_status.split("\n") if line
@@ -450,7 +450,7 @@ def main():
         args.po_file.extend(
             Path(filename)
             for status, filename in git_status_lines
-            if filename.endswith(".po")
+            if filename.endswith(".po") and status != "D"
         )
     try:
         errors = spell_check(
