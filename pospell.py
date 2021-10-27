@@ -36,7 +36,7 @@ class Unreachable(POSpellException):
 try:
     HUNSPELL_VERSION = subprocess.check_output(
         ["hunspell", "--version"], universal_newlines=True
-    ).split("\n")[0]
+    ).split("\n", maxsplit=1)[0]
 except FileNotFoundError:
     print("hunspell not found, please install hunspell.", file=sys.stderr)
     sys.exit(1)
@@ -216,7 +216,7 @@ def po_to_text(po_path, drop_capitalized=False):
     buffer = []
     lines = 0
     try:
-        entries = polib.pofile(Path(po_path).read_text())
+        entries = polib.pofile(Path(po_path).read_text(encoding="UTF-8"))
     except Exception as err:
         raise POSpellException(str(err)) from err
     for entry in entries:
@@ -410,18 +410,16 @@ def gracefull_handling_of_missing_dicts(language):
     )
     if which("apt"):
         error("Maybe try something like:")
-        error("  sudo apt install hunspell-{}".format(language))
+        error(f"  sudo apt install hunspell-{language}")
     else:
         error(
-            """I don't know your environment, but I bet the package name looks like:
+            f"""I don't know your environment, but I bet the package name looks like:
 
     hunspell-{language}
 
 If you find it, please tell me (by opening an issue or a PR on
 https://github.com/JulienPalard/pospell/) so I can enhance this error message.
-""".format(
-                language=language
-            )
+"""
         )
     sys.exit(1)
 
