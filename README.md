@@ -71,10 +71,15 @@ per line.
 
 ## Contributing
 
-In a venv, install the dev requirements:
+You can work in a venv, to install the project locally:
 
 ```bash
-python3 -m venv --prompt pospell .venv
-source .venv/bin/activate
-python3 -m pip install -r requirements-dev.txt
+python -m pip install .
+```
+
+And to test it locally:
+
+```bash
+python -m pip install tox
+tox -p all
 ```

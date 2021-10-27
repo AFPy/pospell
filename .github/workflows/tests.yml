@@ -31,7 +31,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: .tox
-          key: ${{ matrix.tox.python-version }}-${{ hashFiles('tox.ini') }}-${{ hashFiles('requirements-dev.txt') }}
+          key: ${{ matrix.tox.python-version }}-${{ hashFiles('tox.ini') }}
       - name: Install dependencies
         run: |
           sudo apt-get update
