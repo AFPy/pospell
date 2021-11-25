@@ -292,7 +292,7 @@ def parse_args():
         print("Error: don't provide both --drop-capitalized AND --no-drop-capitalized.")
         parser.print_help()
         sys.exit(1)
-    if not args.po_file and not args.modified:
+    if not args.po_file and not args.modified and not args.glob:
         parser.print_help()
         sys.exit(1)
     return args
