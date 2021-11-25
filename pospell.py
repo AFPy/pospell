@@ -2,10 +2,14 @@
 import io
 from string import digits
 from unicodedata import category
+import collections
+import functools
 import logging
+import multiprocessing
+import os
 import subprocess
 import sys
-from typing import Dict
+from typing import List, Tuple
 from contextlib import redirect_stderr
 from itertools import chain
 from pathlib import Path
@@ -23,6 +27,9 @@ import regex
 __version__ = "1.0.13"
 
 DEFAULT_DROP_CAPITALIZED = {"fr": True, "fr_FR": True}
+
+
+input_line = collections.namedtuple("input_line", "filename line text")
 
 
 class POSpellException(Exception):
@@ -202,7 +209,7 @@ def quote_for_hunspell(text):
     against future changes in hunspell.
     """
     out = []
-    for line in text.split("\n"):
+    for line in text:
         out.append("^" + line if line else "")
     return "\n".join(out)
 
@@ -213,7 +220,7 @@ def po_to_text(po_path, drop_capitalized=False):
     This strips the msgids and all po syntax while keeping lines at
     their same position / line number.
     """
-    buffer = []
+    input_lines = []
     lines = 0
     try:
         entries = polib.pofile(Path(po_path).read_text(encoding="UTF-8"))
@@ -223,11 +230,17 @@ def po_to_text(po_path, drop_capitalized=False):
         if entry.msgid == entry.msgstr:
             continue
         while lines < entry.linenum:
-            buffer.append("")
             lines += 1
-        buffer.append(clear(strip_rst(entry.msgstr), drop_capitalized, po_path=po_path))
+            input_lines.append(input_line(po_path, lines, ""))
         lines += 1
-    return "\n".join(buffer)
+        input_lines.append(
+            input_line(
+                po_path,
+                lines,
+                clear(strip_rst(entry.msgstr), drop_capitalized, po_path=po_path),
+            )
+        )
+    return input_lines
 
 
 def parse_args():
@@ -287,6 +300,13 @@ def parse_args():
     parser.add_argument(
         "--modified", "-m", action="store_true", help="Use git to find modified files."
     )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=os.cpu_count(),
+        help="Number of files to check in paralel, defaults to all available CPUs",
+    )
     args = parser.parse_args()
     if args.drop_capitalized and args.no_drop_capitalized:
         print("Error: don't provide both --drop-capitalized AND --no-drop-capitalized.")
@@ -315,12 +335,32 @@ def look_like_a_word(word):
     return True
 
 
+def run_hunspell(language, personal_dict, input_lines):
+    """Run hunspell over the given input lines."""
+    personal_dict_arg = ["-p", personal_dict] if personal_dict else []
+    try:
+        output = subprocess.check_output(
+            ["hunspell", "-d", language, "-a"] + personal_dict_arg,
+            universal_newlines=True,
+            input=quote_for_hunspell(text for _, _, text in input_lines),
+        )
+    except subprocess.CalledProcessError:
+        return -1
+    return parse_hunspell_output(input_lines, output.splitlines())
+
+
+def flatten(list_of_lists):
+    """[[a,b,c], [d,e,f]] -> [a,b,c,d,e,f]."""
+    return [element for a_list in list_of_lists for element in a_list]
+
+
 def spell_check(
     po_files,
     personal_dict=None,
     language="en_US",
     drop_capitalized=False,
     debug_only=False,
+    jobs=os.cpu_count(),
 ):
     """Check for spelling mistakes in the given po_files.
 
@@ -329,67 +369,65 @@ def spell_check(
 
     Debug only will show what's passed to Hunspell instead of passing it.
     """
-    personal_dict_arg = ["-p", personal_dict] if personal_dict else []
-    texts_for_hunspell = {}
-    for po_file in po_files:
-        if debug_only:
-            print(po_to_text(str(po_file), drop_capitalized))
-            continue
-        texts_for_hunspell[po_file] = po_to_text(str(po_file), drop_capitalized)
-    if debug_only:
-        return 0
+    # Pool.__exit__ calls terminate() instead of close(), we need the latter,
+    # which ensures the processes' atexit handlers execute fully, which in
+    # turn lets coverage write the sub-processes' coverage information
+    pool = multiprocessing.Pool(jobs)  # pylint: disable=consider-using-with
     try:
-        output = subprocess.run(
-            ["hunspell", "-d", language, "-a"] + personal_dict_arg,
-            universal_newlines=True,
-            input=quote_for_hunspell("\n".join(texts_for_hunspell.values())),
-            stdout=subprocess.PIPE,
-            check=True,
+        input_lines = flatten(
+            pool.map(
+                functools.partial(po_to_text, drop_capitalized=drop_capitalized),
+                po_files,
+            )
         )
-    except subprocess.CalledProcessError:
-        return -1
-    return parse_hunspell_output(texts_for_hunspell, output)
+        if debug_only:
+            for filename, line, text in input_lines:
+                print(filename, line, text, sep=":")
+            return 0
+        if not input_lines:
+            return 0
+
+        # Distribute input lines across workers
+        lines_per_job = (len(input_lines) + jobs - 1) // jobs
+        chunked_inputs = [
+            input_lines[i : i + lines_per_job]
+            for i in range(0, len(input_lines), lines_per_job)
+        ]
+        errors = flatten(
+            pool.map(
+                functools.partial(run_hunspell, language, personal_dict),
+                chunked_inputs,
+            )
+        )
+    finally:
+        pool.close()
+        pool.join()
+
+    for error in errors:
+        print(*error, sep=":")
+    return len(errors)
 
 
-def parse_hunspell_output(hunspell_input: Dict[str, str], hunspell_output) -> int:
-    """Parse `hunspell -a` output.
-
-    Print one line per error on stderr, of the following format:
-
-        FILE:LINE:ERROR
-
-    Returns the number of errors.
-
-    hunspell_input contains a dict of files: all_lines_for_this_file.
-    """
-    errors = 0
-    checked_files = iter(hunspell_input.items())
-    checked_file_name, checked_text = next(checked_files)
-    checked_lines = iter(checked_text.split("\n"))
-    next(checked_lines)
-    current_line_number = 1
-    for line in hunspell_output.stdout.split("\n")[1:]:
-        if not line:
+def parse_hunspell_output(inputs, outputs) -> List[Tuple[str, int, str]]:
+    """Parse `hunspell -a` output and collect all errors."""
+    # skip first line of hunspell output (it's the banner)
+    outputs = iter(outputs[1:])
+    errors = []
+    for po_input_line, output_line in zip(inputs, outputs):
+        if not po_input_line.text:
+            continue
+        while output_line:
+            if output_line.startswith("&"):
+                _, original, *_ = output_line.split()
+                if look_like_a_word(original):
+                    errors.append(
+                        (po_input_line.filename, po_input_line.line, original)
+                    )
             try:
-                next(checked_lines)
-                current_line_number += 1
+                output_line = next(outputs)
             except StopIteration:
-                try:
-                    checked_file_name, checked_text = next(checked_files)
-                    checked_lines = iter(checked_text.split("\n"))
-                    next(checked_lines)
-                    current_line_number = 1
-                except StopIteration:
-                    return errors
-            continue
-        if line == "*":  # OK
-            continue
-        if line[0] == "&":
-            _, original, *_ = line.split()
-            if look_like_a_word(original):
-                print(checked_file_name, current_line_number, original, sep=":")
-                errors += 1
-    raise Unreachable("Got this one? I'm sorry, read XKCD 2200, then open an issue.")
+                break
+    return errors
 
 
 def gracefull_handling_of_missing_dicts(language):
@@ -457,6 +495,7 @@ def main():
             args.language,
             drop_capitalized,
             args.debug,
+            args.jobs,
         )
     except POSpellException as err:
         print(err, file=sys.stderr)
