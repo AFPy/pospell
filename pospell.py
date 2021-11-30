@@ -90,11 +90,14 @@ class NodeToTextVisitor(docutils.nodes.NodeVisitor):
         "emphasis",
         "superscript",
         "title_reference",
+        "substitution_reference",
+        "citation_reference",
         "strong",
         "DummyNodeClass",
         "reference",
         "literal",
         "Text",
+        "system_message",
     )
 
     def __init__(self, document):
@@ -123,7 +126,7 @@ class NodeToTextVisitor(docutils.nodes.NodeVisitor):
 
     def visit_Text(self, node):
         """Keep this node text, this is typically what we want to spell check."""
-        self.output.append(node.rawsource)
+        self.output.append(docutils.nodes.unescape(node, restore_backslashes=True))
 
     def __str__(self):
         """Give the accumulated strings."""
