@@ -1,6 +1,6 @@
 # pospell
 
-`pospell` is a spellcheckers for po files containing reStructuedText.
+`pospell` is a spellcheckers for po files containing reStructuredText.
 
 
 ## Pospell is part of poutils!
